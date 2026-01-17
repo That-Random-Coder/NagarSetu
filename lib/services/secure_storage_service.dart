@@ -59,6 +59,16 @@ class SecureStorageService {
     return await _storage.read(key: _userNameKey);
   }
 
+  /// Alias for getUserName - for compatibility
+  static Future<String?> getFullName() async {
+    return await getUserName();
+  }
+
+  /// Alias for getUserEmail - for compatibility
+  static Future<String?> getEmail() async {
+    return await getUserEmail();
+  }
+
   /// Set login status
   static Future<void> setLoggedIn(bool value) async {
     await _storage.write(key: _isLoggedInKey, value: value.toString());

@@ -4,8 +4,10 @@ import 'package:lottie/lottie.dart';
 import '../widgets/lottie_loader.dart';
 import '../services/auth_service.dart';
 import '../services/worker_service.dart';
+import '../services/supervisor_service.dart';
 import 'home_screen.dart';
 import 'home_page_worker.dart';
+import 'home_page_supervisor.dart';
 import 'info.dart';
 import 'reset.dart';
 
@@ -58,11 +60,23 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Check if email contains 'worker' keyword (case-insensitive)
   bool _isWorkerEmail(String email) => email.toLowerCase().contains('worker');
 
-  /// Get the actual email to send to backend (without 'worker' keyword)
+  /// Check if email contains 'supervisor' keyword (case-insensitive)
+  bool _isSupervisorEmail(String email) =>
+      email.toLowerCase().contains('supervisor');
+
+  /// Get the actual email to send to backend (without 'worker' or 'supervisor' keyword)
   String _getActualEmail(String email) {
-    if (!_isWorkerEmail(email)) return email;
-    // Remove 'worker' from email (case-insensitive)
-    return email.replaceAll(RegExp(r'worker', caseSensitive: false), '');
+    String result = email;
+    if (_isWorkerEmail(email)) {
+      result = result.replaceAll(RegExp(r'worker', caseSensitive: false), '');
+    }
+    if (_isSupervisorEmail(email)) {
+      result = result.replaceAll(
+        RegExp(r'supervisor', caseSensitive: false),
+        '',
+      );
+    }
+    return result;
   }
 
   Future<void> _sendOtp() async {
@@ -74,15 +88,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isSendingOtp = true);
 
-    // Check if worker email and get actual email (without 'worker' keyword)
+    // Check user type and get actual email (without keywords)
     final isWorker = _isWorkerEmail(email);
+    final isSupervisor = _isSupervisorEmail(email);
     final actualEmail = _getActualEmail(email);
 
-    // Use appropriate service based on worker status
+    // Use appropriate service based on user type
     bool success = false;
     String? message;
 
-    if (isWorker) {
+    if (isSupervisor) {
+      final response = await SupervisorService.getCode(
+        email: actualEmail,
+        roles: 'SUPERVISOR',
+      );
+      success = response.success;
+      message = response.message;
+    } else if (isWorker) {
       final response = await WorkerService.getCode(
         email: actualEmail,
         roles: 'WORKER',
@@ -120,14 +142,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final email = _emailController.text.trim();
     final isWorker = _isWorkerEmail(email);
+    final isSupervisor = _isSupervisorEmail(email);
     final actualEmail = _getActualEmail(email);
 
     if (_isLogin) {
-      // Use appropriate service for login based on worker status
+      // Use appropriate service for login based on user type
       bool success = false;
       String? errorMessage;
 
-      if (isWorker) {
+      if (isSupervisor) {
+        final response = await SupervisorService.login(
+          email: actualEmail,
+          password: _passwordController.text,
+        );
+        success = response.success;
+        errorMessage = response.message;
+      } else if (isWorker) {
         final response = await WorkerService.login(
           email: actualEmail,
           password: _passwordController.text,
@@ -148,20 +178,26 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (success) {
-        // Navigate to appropriate home screen based on worker status
+        // Navigate to appropriate home screen based on user type
+        Widget homeScreen;
+        if (isSupervisor) {
+          homeScreen = const AdminHomePage();
+        } else if (isWorker) {
+          homeScreen = const WorkerHomePage();
+        } else {
+          homeScreen = const HomeScreen();
+        }
+
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (context) =>
-                isWorker ? const WorkerHomePage() : const HomeScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => homeScreen),
           (route) => false,
         );
       } else {
         _showSnackBar(errorMessage ?? 'Login failed. Please try again.');
       }
     } else {
-      // Sign up - go to info screen with original email (keeps 'worker' for detection)
+      // Sign up - go to info screen with original email (keeps keywords for detection)
       if (!mounted) return;
       setState(() => _isLoading = false);
 
@@ -169,7 +205,8 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => InfoScreen(
-            email: email, // Pass original email so InfoScreen can detect worker
+            email:
+                email, // Pass original email so InfoScreen can detect user type
             password: _passwordController.text,
             otpCode: _otpController.text.trim(),
           ),

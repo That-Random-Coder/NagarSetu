@@ -143,6 +143,8 @@ class AuthService {
     int? age,
     String? gender,
     String? location,
+    double? latitude,
+    double? longitude,
     String role = 'CITIZEN',
     bool isWorker = false,
   }) async {
@@ -161,6 +163,8 @@ class AuthService {
         if (age != null) 'age': age,
         if (gender != null) 'gender': gender,
         if (location != null) 'location': location,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       };
 
       if (Environment.enableLogging) {

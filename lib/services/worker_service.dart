@@ -110,6 +110,8 @@ class WorkerService {
     int? age,
     String? gender,
     String? location,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       final uri = Uri.parse(
@@ -126,6 +128,8 @@ class WorkerService {
         if (age != null) 'age': age,
         if (gender != null) 'gender': gender,
         if (location != null) 'location': location,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       };
 
       if (Environment.enableLogging) {
