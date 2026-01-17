@@ -14,34 +14,29 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  int _playCount = 0;
+    with TickerProviderStateMixin {
+  late AnimationController _animationController;
   bool _navigated = false;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
 
-    // Create controller to control playback and manage repeat count
-    _controller = AnimationController(vsync: this);
-
-    _controller.addStatusListener((status) {
+    // Listen to animation completion
+    _animationController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        _playCount++;
-        if (_playCount < 2) {
-          // Play second time
-          _controller.forward(from: 0);
-        } else {
-          _navigateToNextScreen();
-        }
+        _navigateToNextScreen();
       }
     });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -84,34 +79,31 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final maxWidth = size.width * 0.9;
-    final maxHeight = size.height * 0.7;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: GestureDetector(
         onTap: () {
-          _controller.stop();
+          _animationController.stop();
           _navigateToNextScreen();
-        }, // allow tap to skip
+        },
         child: Center(
-          child: SizedBox(
-            width: maxWidth,
-            height: maxHeight,
-            child: Lottie.asset(
-              'assets/NagarSetu_Logo.json',
-              controller: _controller,
-              fit: BoxFit.contain,
-              repeat: false,
-              frameRate: FrameRate.max,
-              onLoaded: (composition) {
-                // Use composition duration and start controller; controller will manage repeats
-                _controller.duration = composition.duration;
-                _playCount = 0;
-                _controller.forward(from: 0);
-              },
-            ),
+          child: Lottie.asset(
+            'assets/NagarSetu_Logo.json',
+            controller: _animationController,
+            fit: BoxFit.contain,
+            repeat: false,
+            frameRate: FrameRate.max,
+            onLoaded: (composition) {
+              // Set the animation duration to 3 seconds
+              _animationController.duration = const Duration(seconds: 3);
+              // Reset to beginning and then play after a 1.5 second delay
+              _animationController.reset();
+              Future.delayed(const Duration(milliseconds: 1500), () {
+                if (mounted) {
+                  _animationController.forward();
+                }
+              });
+            },
           ),
         ),
       ),

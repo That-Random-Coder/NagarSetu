@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import 'discover.dart';
+import 'help.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -575,7 +576,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Support & Info',
       icon: Icons.help_outline,
       children: [
-        _SupportRow(icon: Icons.help_center_outlined, label: 'Help & FAQs'),
+        _SupportRow(
+          icon: Icons.help_center_outlined,
+          label: 'Help & FAQs',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HelpFAQScreen()),
+            );
+          },
+        ),
         const _CardDivider(),
         _SupportRow(icon: Icons.info_outline, label: 'About NagarSetu'),
         const _CardDivider(),
