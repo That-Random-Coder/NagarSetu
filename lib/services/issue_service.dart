@@ -4,11 +4,86 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../config/environment.dart';
 import '../models/issue_model.dart';
+import '../models/issue_map_model.dart';
 import 'secure_storage_service.dart';
 
 class IssueService {
   IssueService._();
   static final _client = http.Client();
+
+  /// Debug logger for API calls
+  static void _log(String message) {
+    if (Environment.enableLogging) {
+      print('[IssueService] $message');
+    }
+  }
+
+  /// Debug method to test API connectivity
+  static Future<Map<String, dynamic>> testApiConnection() async {
+    final results = <String, dynamic>{};
+
+    try {
+      // Check auth status
+      final token = await SecureStorageService.getToken();
+      final userId = await SecureStorageService.getUserId();
+      results['hasToken'] = token != null;
+      results['hasUserId'] = userId != null;
+      results['userId'] = userId;
+      results['baseUrl'] = Environment.apiBaseUrl;
+
+      _log('=== API Connection Test ===');
+      _log('Base URL: ${Environment.apiBaseUrl}');
+      _log('Has Token: ${token != null}');
+      _log('User ID: $userId');
+
+      // Test map endpoint
+      if (userId != null) {
+        final mapUri = Uri.parse(
+          '${Environment.apiBaseUrl}${Environment.getIssuesForMapEndpoint}',
+        ).replace(queryParameters: {'id': userId});
+
+        _log('Testing Map Endpoint: $mapUri');
+
+        final headers = await _getHeaders();
+        final response = await _client
+            .get(mapUri, headers: headers)
+            .timeout(const Duration(seconds: 10));
+
+        String statusMessage = '';
+        if (response.statusCode == 200) {
+          statusMessage = 'OK - Issues found';
+        } else if (response.statusCode == 204) {
+          statusMessage = 'OK - No issues (empty)';
+        } else {
+          statusMessage = 'Error';
+        }
+
+        results['mapEndpoint'] = {
+          'url': mapUri.toString(),
+          'statusCode': response.statusCode,
+          'statusMessage': statusMessage,
+          'body': response.body.isEmpty
+              ? '(empty response - this is normal for 204)'
+              : (response.body.length > 500
+                    ? '${response.body.substring(0, 500)}...'
+                    : response.body),
+        };
+
+        _log('Map Endpoint Response: ${response.statusCode} - $statusMessage');
+        _log(
+          'Response Body: ${response.body.isEmpty ? "(empty)" : response.body}',
+        );
+      }
+
+      results['success'] = true;
+    } catch (e) {
+      results['success'] = false;
+      results['error'] = e.toString();
+      _log('API Test Error: $e');
+    }
+
+    return results;
+  }
 
   static Future<Map<String, String>> _getHeaders() async {
     final token = await SecureStorageService.getToken();
@@ -31,11 +106,13 @@ class IssueService {
     try {
       final userId = await SecureStorageService.getUserId();
       if (userId == null) {
+        _log('ERROR: User not authenticated');
         return ApiResult(success: false, message: 'User not authenticated');
       }
 
       // Verify image exists
       if (!await image.exists()) {
+        _log('ERROR: Image file not found at ${image.path}');
         return ApiResult(success: false, message: 'Image file not found');
       }
 
@@ -81,22 +158,19 @@ class IssueService {
         ),
       );
 
-      if (Environment.enableLogging) {
-        print('Creating issue with multipart request (DTO + Image)');
-        print('DTO: $issueCreateDto');
-        print('Image: $fileName');
-      }
+      _log('=== Creating Issue ===');
+      _log('URL: $uri');
+      _log('DTO: ${jsonEncode(issueCreateDto)}');
+      _log('Image: $fileName (${await image.length()} bytes)');
 
       final streamedResponse = await request.send().timeout(
         Duration(seconds: Environment.requestTimeout),
       );
       final response = await http.Response.fromStream(streamedResponse);
 
-      if (Environment.enableLogging) {
-        print(
-          'Create issue response: ${response.statusCode} - ${response.body}',
-        );
-      }
+      _log('Response Status: ${response.statusCode}');
+      _log('Response Headers: ${response.headers}');
+      _log('Response Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Backend returns just the issue ID as a string
@@ -299,6 +373,231 @@ class IssueService {
           'An error occurred';
     } catch (e) {
       return 'An error occurred';
+    }
+  }
+
+  /// Fetches issues for map display using /api/issue/user/map endpoint
+  /// Falls back to /api/issue/user if map endpoint returns empty
+  /// Returns lightweight IssueMapModel objects with location and status info
+  static Future<ApiResult<List<IssueMapModel>>> getIssuesForMap() async {
+    try {
+      final userId = await SecureStorageService.getUserId();
+      if (userId == null) {
+        return ApiResult(success: false, message: 'User not authenticated');
+      }
+
+      final headers = await _getHeaders();
+
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.getIssuesForMapEndpoint}',
+      ).replace(queryParameters: {'id': userId});
+
+      _log('Fetching issues for map, user: $userId');
+      _log('Map URL: $uri');
+
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'Get issues for map response: ${response.statusCode} - ${response.body}',
+      );
+
+      List<IssueMapModel> issues = [];
+
+      // Handle 204 No Content or empty response - try fallback
+      if (response.statusCode == 204 || response.body.trim().isEmpty) {
+        _log(
+          'Map endpoint returned empty - trying fallback to /api/issue/user',
+        );
+        issues = await _getIssuesFromUserEndpoint();
+      } else if (response.statusCode == 200) {
+        final body = response.body.trim();
+        final data = jsonDecode(body);
+        List<dynamic> issuesList = [];
+
+        if (data is List) {
+          issuesList = data;
+        } else if (data is Set) {
+          issuesList = data.toList();
+        } else if (data['data'] != null) {
+          issuesList = data['data'] as List;
+        }
+
+        _log('Parsed ${issuesList.length} issues from map response');
+
+        issues = issuesList
+            .map((json) => IssueMapModel.fromJson(json))
+            .toList();
+
+        // If map endpoint returned empty list, try fallback
+        if (issues.isEmpty) {
+          _log('Map endpoint returned empty list - trying fallback');
+          issues = await _getIssuesFromUserEndpoint();
+        }
+      } else {
+        final error = _parseError(response.body);
+        _log('Map endpoint error: $error - trying fallback');
+        issues = await _getIssuesFromUserEndpoint();
+      }
+
+      return ApiResult(success: true, data: issues);
+    } catch (e) {
+      _log('Get issues for map error: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to fetch map issues: $e',
+      );
+    }
+  }
+
+  /// Fallback method to get issues from /api/issue/user and fetch full details for each
+  static Future<List<IssueMapModel>> _getIssuesFromUserEndpoint() async {
+    try {
+      final result = await getUserIssues(pageNumber: 0);
+      if (result.success && result.data != null && result.data!.isNotEmpty) {
+        _log(
+          'Fallback: Got ${result.data!.length} issues from /api/issue/user',
+        );
+
+        // The /api/issue/user endpoint doesn't return lat/lng, so we need to fetch each issue's details
+        final List<IssueMapModel> mapIssues = [];
+
+        for (final issue in result.data!) {
+          // Check if issue already has valid coordinates
+          if (issue.latitude != 0.0 && issue.longitude != 0.0) {
+            mapIssues.add(
+              IssueMapModel(
+                id: issue.id,
+                latitude: issue.latitude,
+                longitude: issue.longitude,
+                criticality: _mapCriticality(issue.criticality),
+                stages: _mapStatusToStages(issue.status),
+                issueType: _mapIssueType(issue.type),
+              ),
+            );
+          } else {
+            // Fetch full issue details to get coordinates
+            _log('Fetching full details for issue: ${issue.id}');
+            final detailResult = await getIssueById(issue.id);
+            if (detailResult.success && detailResult.data != null) {
+              final fullIssue = detailResult.data!;
+              _log(
+                'Got coordinates: ${fullIssue.latitude}, ${fullIssue.longitude}',
+              );
+              mapIssues.add(
+                IssueMapModel(
+                  id: fullIssue.id,
+                  latitude: fullIssue.latitude,
+                  longitude: fullIssue.longitude,
+                  criticality: _mapCriticality(fullIssue.criticality),
+                  stages: _mapStatusToStages(fullIssue.status),
+                  issueType: _mapIssueType(fullIssue.type),
+                ),
+              );
+            }
+          }
+        }
+
+        _log('Fallback: Returning ${mapIssues.length} issues with coordinates');
+        return mapIssues;
+      }
+      return [];
+    } catch (e) {
+      _log('Fallback fetch error: $e');
+      return [];
+    }
+  }
+
+  /// Maps status strings to API stage enum values
+  static String _mapStatusToStages(String status) {
+    final statusMap = {
+      'pending': 'PENDING',
+      'submitted': 'PENDING',
+      'acknowledged': 'ACKNOWLEDGED',
+      'team assigned': 'TEAM_ASSIGNED',
+      'in progress': 'IN_PROGRESS',
+      'resolved': 'RESOLVED',
+      'reconsidered': 'RECONSIDERED',
+    };
+    return statusMap[status.toLowerCase()] ?? status.toUpperCase();
+  }
+
+  /// Marks an issue as done by uploading a completion photo
+  /// Uses /api/issue/done endpoint
+  static Future<ApiResult<String>> markIssueDone({
+    required String issueId,
+    required File completionImage,
+  }) async {
+    try {
+      // Verify image exists
+      if (!await completionImage.exists()) {
+        return ApiResult(success: false, message: 'Image file not found');
+      }
+
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.markIssueDoneEndpoint}',
+      ).replace(queryParameters: {'id': issueId});
+
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add authorization header
+      final token = await SecureStorageService.getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Add image file
+      final fileName = completionImage.path.split(Platform.pathSeparator).last;
+      final mimeType = _getMimeType(fileName);
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          completionImage.path,
+          filename: fileName,
+          contentType: mimeType,
+        ),
+      );
+
+      if (Environment.enableLogging) {
+        print('Marking issue as done: $issueId');
+        print('Completion image: $fileName');
+      }
+
+      final streamedResponse = await request.send().timeout(
+        Duration(seconds: Environment.requestTimeout),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (Environment.enableLogging) {
+        print(
+          'Mark issue done response: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseBody = response.body.trim();
+        String returnedId;
+
+        if (responseBody.startsWith('"') && responseBody.endsWith('"')) {
+          returnedId = responseBody.substring(1, responseBody.length - 1);
+        } else {
+          returnedId = responseBody;
+        }
+
+        return ApiResult(success: true, data: returnedId);
+      } else {
+        final error = _parseError(response.body);
+        return ApiResult(success: false, message: error);
+      }
+    } catch (e) {
+      if (Environment.enableLogging) {
+        print('Mark issue done error: $e');
+      }
+      return ApiResult(
+        success: false,
+        message: 'Failed to mark issue as done: $e',
+      );
     }
   }
 }

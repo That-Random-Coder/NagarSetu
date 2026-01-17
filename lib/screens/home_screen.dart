@@ -18,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
   int _currentIndex = 0;
   String _firstName = 'User';
+  bool _isLoadingLeaderboard = true;
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -58,6 +59,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     }
   }
 
+  Future<void> _loadLeaderboard() async {
+    setState(() {
+      _isLoadingLeaderboard = true;
+    });
+    final entries = await UserService.getLeaderboard();
+    if (!mounted) return;
+    setState(() {
+      _leaderboard = entries;
+      _isLoadingLeaderboard = false;
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -83,14 +96,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   void didPopNext() {
     // Returned to this screen (another route popped)
     _loadLeaderboard();
-  }
-
-  Future<void> _loadLeaderboard() async {
-    final entries = await UserService.getLeaderboard();
-    if (!mounted) return;
-    setState(() {
-      _leaderboard = entries;
-    });
   }
 
   String _initials(String name) {
@@ -332,21 +337,37 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           const SizedBox(height: 16),
           Builder(
             builder: (context) {
-              final uiContributors = _leaderboard.isNotEmpty
-                  ? _leaderboard.asMap().entries.map((e) {
-                      final idx = e.key;
-                      final entry = e.value;
-                      return {
-                        'name': entry.fullName,
-                        'points': entry.score,
-                        'rank': idx + 1,
-                        'avatar': _initials(entry.fullName),
-                      };
-                    }).toList()
-                  : topContributors;
+              if (_isLoadingLeaderboard) {
+                return Column(
+                  children: List.generate(
+                    3,
+                    (_) => _buildContributorPlaceholder(),
+                  ),
+                );
+              }
 
+              if (_leaderboard.isNotEmpty) {
+                final uiContributors = _leaderboard.asMap().entries.map((e) {
+                  final idx = e.key;
+                  final entry = e.value;
+                  return {
+                    'name': entry.fullName,
+                    'points': entry.score,
+                    'rank': idx + 1,
+                    'avatar': _initials(entry.fullName),
+                  };
+                }).toList();
+
+                return Column(
+                  children: uiContributors
+                      .map((contributor) => _buildContributorItem(contributor))
+                      .toList(),
+                );
+              }
+
+              // No leaderboard entries
               return Column(
-                children: uiContributors
+                children: topContributors
                     .map((contributor) => _buildContributorItem(contributor))
                     .toList(),
               );
@@ -426,6 +447,62 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContributorPlaceholder() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            color: Colors.white.withValues(alpha: 0.15),
+          ),
+          const SizedBox(width: 12),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.white.withValues(alpha: 0.15),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 14,
+                  width: 120,
+                  color: Colors.white.withValues(alpha: 0.15),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 12,
+                  width: 80,
+                  color: Colors.white.withValues(alpha: 0.12),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              width: 40,
+              height: 12,
+              color: Colors.white.withValues(alpha: 0.18),
             ),
           ),
         ],
