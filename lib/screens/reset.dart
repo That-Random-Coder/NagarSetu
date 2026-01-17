@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import '../widgets/lottie_loader.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -44,12 +45,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       );
       return;
     }
-    
+
     // Simulate sending OTP
     setState(() => _otpSent = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('OTP sent to your email')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('OTP sent to your email')));
   }
 
   void _submitReset() {
@@ -67,11 +68,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() => _isLoading = false);
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Password reset successfully! Login now.')),
+            const SnackBar(
+              content: Text('Password reset successfully! Login now.'),
+            ),
           );
-          
+
           // Go back to Login Screen
           Navigator.pop(context);
         }
@@ -97,8 +100,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 child: Center(
                   child: Lottie.network(
                     'https://assets3.lottiefiles.com/packages/lf20_gjmecwii.json', // Lock/Security Animation
-                    errorBuilder: (context, error, stackTrace) => 
-                        const Icon(Icons.lock_reset, size: 80, color: Color(0xFF1976D2)),
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.lock_reset,
+                      size: 80,
+                      color: Color(0xFF1976D2),
+                    ),
                   ),
                 ),
               ),
@@ -132,7 +138,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     topRight: Radius.circular(30),
                   ),
                   boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 30, offset: Offset(0, -10)),
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 30,
+                      offset: Offset(0, -10),
+                    ),
                   ],
                 ),
                 child: Padding(
@@ -146,16 +156,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           "Reset Password",
                           textAlign: TextAlign.center,
                           style: GoogleFonts.poppins(
-                            fontSize: 24, 
-                            fontWeight: FontWeight.bold, 
-                            color: const Color(0xFF1976D2)
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1976D2),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           "Enter your email to receive an OTP and set a new password.",
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 32),
 
@@ -169,7 +182,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 label: "Email Address",
                                 icon: Icons.email_outlined,
                                 keyboardType: TextInputType.emailAddress,
-                                validator: (v) => (v!.isEmpty || !v.contains('@')) ? "Invalid email" : null,
+                                validator: (v) =>
+                                    (v!.isEmpty || !v.contains('@'))
+                                    ? "Invalid email"
+                                    : null,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -180,11 +196,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFE3F2FD),
                                   foregroundColor: const Color(0xFF1976D2),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
                                   elevation: 0,
                                 ),
-                                child: Text(_otpSent ? "Sent" : "Send OTP", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                child: Text(
+                                  _otpSent ? "Sent" : "Send OTP",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -195,45 +220,55 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           duration: kAnimDuration,
                           curve: kAnimCurve,
                           alignment: Alignment.topCenter,
-                          child: !_otpSent 
-                            ? const SizedBox.shrink() 
-                            : Column(
-                                children: [
-                                  const SizedBox(height: 20),
-                                  _buildTextField(
-                                    controller: _otpController,
-                                    label: "Enter 5-Digit OTP",
-                                    icon: Icons.confirmation_number_outlined,
-                                    keyboardType: TextInputType.number,
-                                    validator: (v) => (v!.length < 4) ? "Invalid OTP" : null,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  _buildTextField(
-                                    controller: _passController,
-                                    label: "New Password",
-                                    icon: Icons.lock_outline,
-                                    isObscure: _obscurePass,
-                                    hasSuffix: true,
-                                    onSuffixTap: () => setState(() => _obscurePass = !_obscurePass),
-                                    validator: (v) => (v!.length < 6) ? "Min 6 chars" : null,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  _buildTextField(
-                                    controller: _confirmPassController,
-                                    label: "Confirm Password",
-                                    // CHANGED: Fixed invalid icon error
-                                    icon: Icons.verified_user_outlined, 
-                                    isObscure: _obscureConfirm,
-                                    hasSuffix: true,
-                                    onSuffixTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                                    validator: (v) {
-                                      if (v!.isEmpty) return "Required";
-                                      if (v != _passController.text) return "Passwords do not match";
-                                      return null;
-                                    },
-                                  ),
-                                ],
-                              ),
+                          child: !_otpSent
+                              ? const SizedBox.shrink()
+                              : Column(
+                                  children: [
+                                    const SizedBox(height: 20),
+                                    _buildTextField(
+                                      controller: _otpController,
+                                      label: "Enter 5-Digit OTP",
+                                      icon: Icons.confirmation_number_outlined,
+                                      keyboardType: TextInputType.number,
+                                      validator: (v) => (v!.length < 4)
+                                          ? "Invalid OTP"
+                                          : null,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildTextField(
+                                      controller: _passController,
+                                      label: "New Password",
+                                      icon: Icons.lock_outline,
+                                      isObscure: _obscurePass,
+                                      hasSuffix: true,
+                                      onSuffixTap: () => setState(
+                                        () => _obscurePass = !_obscurePass,
+                                      ),
+                                      validator: (v) => (v!.length < 6)
+                                          ? "Min 6 chars"
+                                          : null,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildTextField(
+                                      controller: _confirmPassController,
+                                      label: "Confirm Password",
+                                      // CHANGED: Fixed invalid icon error
+                                      icon: Icons.verified_user_outlined,
+                                      isObscure: _obscureConfirm,
+                                      hasSuffix: true,
+                                      onSuffixTap: () => setState(
+                                        () =>
+                                            _obscureConfirm = !_obscureConfirm,
+                                      ),
+                                      validator: (v) {
+                                        if (v!.isEmpty) return "Required";
+                                        if (v != _passController.text)
+                                          return "Passwords do not match";
+                                        return null;
+                                      },
+                                    ),
+                                  ],
+                                ),
                         ),
 
                         const SizedBox(height: 40),
@@ -247,14 +282,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                               backgroundColor: const Color(0xFF1976D2),
                               foregroundColor: Colors.white,
                               elevation: 4,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                             child: _isLoading
-                                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                                : const Text("Update Password", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                ? const ButtonLoader(size: 24)
+                                : const Text(
+                                    "Update Password",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
-                        SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+                        SizedBox(
+                          height: MediaQuery.of(context).viewInsets.bottom,
+                        ),
                       ],
                     ),
                   ),
@@ -289,7 +334,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         prefixIcon: Icon(icon, color: const Color(0xFF1976D2), size: 22),
         suffixIcon: hasSuffix
             ? IconButton(
-                icon: Icon(isObscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: Colors.grey[400], size: 22),
+                icon: Icon(
+                  isObscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: Colors.grey[400],
+                  size: 22,
+                ),
                 onPressed: onSuffixTap,
               )
             : null,

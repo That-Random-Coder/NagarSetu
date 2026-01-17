@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../widgets/lottie_loader.dart';
 import 'discover.dart';
 import 'help.dart';
 
@@ -73,7 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LottieLoader(size: 120, message: 'Loading profile...');
     }
 
     if (_hasError) {

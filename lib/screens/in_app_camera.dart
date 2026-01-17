@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../widgets/lottie_loader.dart';
 
 class InAppCameraScreen extends StatefulWidget {
   const InAppCameraScreen({super.key});
@@ -101,7 +102,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
         child: Stack(
           children: [
             if (_isInitializing)
-              const Center(child: CircularProgressIndicator())
+              const LottieLoader(size: 100)
             else if (_controller != null && _controller!.value.isInitialized)
               CameraPreview(_controller!)
             else
@@ -162,11 +163,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                         border: Border.all(color: Colors.white, width: 4),
                       ),
                       child: _isTakingPicture
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.blue,
-                              ),
-                            )
+                          ? const LottieLoader(size: 40)
                           : Container(
                               margin: const EdgeInsets.all(4),
                               decoration: BoxDecoration(

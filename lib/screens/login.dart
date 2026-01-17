@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import '../widgets/lottie_loader.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'info.dart';
@@ -353,14 +354,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             child: _isSendingOtp
-                                ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Color(0xFF1976D2),
-                                    ),
-                                  )
+                                ? const ButtonLoader(size: 18)
                                 : Text(
                                     _otpSent ? "Resend" : "Send OTP",
                                     maxLines: 1,
@@ -481,14 +475,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               child: _isLoading
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    )
+                  ? const ButtonLoader(size: 24)
                   : AnimatedSwitcher(
                       duration: kAnimDuration,
                       child: Text(

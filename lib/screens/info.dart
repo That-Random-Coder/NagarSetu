@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../services/auth_service.dart';
+import '../widgets/lottie_loader.dart';
 import 'home_screen.dart';
 
 class InfoScreen extends StatefulWidget {
@@ -236,14 +237,7 @@ class _InfoScreenState extends State<InfoScreen> {
                               ),
                             ),
                             child: _isLoading
-                                ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
+                                ? const ButtonLoader(size: 24)
                                 : const Text(
                                     "Done",
                                     style: TextStyle(

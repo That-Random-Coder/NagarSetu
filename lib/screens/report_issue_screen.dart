@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'dart:io';
+import '../widgets/lottie_loader.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -288,27 +289,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green[600], size: 28),
-            const SizedBox(width: 10),
-            const Text('Report Submitted'),
-          ],
-        ),
-        content: const Text(
-          'Your issue has been reported successfully. You will be notified once it is acknowledged.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: Text('OK', style: TextStyle(color: Colors.blue[600])),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => SuccessDialog(
+        title: 'Issue Reported!',
+        message:
+            'Your issue has been reported successfully. You will be notified once it is acknowledged.',
+        onDismiss: () => Navigator.pop(context),
       ),
     );
   }
@@ -760,7 +746,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 if (_isLoadingLocation)
                   Container(
                     color: Colors.white.withValues(alpha: 0.7),
-                    child: const Center(child: CircularProgressIndicator()),
+                    child: const Center(child: LottieLoader(size: 80)),
                   ),
               ],
             ),
