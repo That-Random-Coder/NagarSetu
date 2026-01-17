@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/splash_screen.dart';
+import 'navigation/route_observer.dart';
 import 'services/localization_service.dart';
 
 void main() async {
@@ -40,6 +41,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: _localizationService.translate('app_name'),
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
       locale: _localizationService.currentLocale,
       supportedLocales: const [
         Locale('en', 'US'),

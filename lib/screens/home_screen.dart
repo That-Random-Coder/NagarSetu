@@ -3,6 +3,10 @@ import 'report_issue_screen.dart';
 import 'my_issues_screen.dart';
 import 'map_screen.dart';
 import 'profile_screen.dart';
+import '../services/user_service.dart';
+import '../models/leaderboard_entry.dart';
+import '../navigation/route_observer.dart';
+import '../services/secure_storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,14 +15,90 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
   int _currentIndex = 0;
+  String _firstName = 'User';
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return 'Good Morning';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Good Afternoon';
+    } else if (hour >= 17 && hour < 21) {
+      return 'Good Evening';
+    } else {
+      return 'Good Night';
+    }
+  }
 
   final List<Map<String, dynamic>> topContributors = [
     {'name': 'Ethan Carter', 'points': 1250, 'rank': 1, 'avatar': 'EC'},
     {'name': 'Olivia Bennett', 'points': 1150, 'rank': 2, 'avatar': 'OB'},
     {'name': 'Noah Thompson', 'points': 1100, 'rank': 3, 'avatar': 'NT'},
   ];
+
+  List<LeaderboardEntry> _leaderboard = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLeaderboard();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final name = await SecureStorageService.getUserName();
+    if (!mounted) return;
+    if (name != null && name.isNotEmpty) {
+      final parts = name.trim().split(' ');
+      setState(() {
+        _firstName = parts.first;
+      });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modal = ModalRoute.of(context);
+    if (modal != null) {
+      routeObserver.subscribe(this, modal);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPush() {
+    // Screen was pushed onto navigation stack
+    _loadLeaderboard();
+  }
+
+  @override
+  void didPopNext() {
+    // Returned to this screen (another route popped)
+    _loadLeaderboard();
+  }
+
+  Future<void> _loadLeaderboard() async {
+    final entries = await UserService.getLeaderboard();
+    if (!mounted) return;
+    setState(() {
+      _leaderboard = entries;
+    });
+  }
+
+  String _initials(String name) {
+    final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
 
   final List<Map<String, dynamic>> recentIssues = [
     {
@@ -72,10 +152,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Mock data for daily stats
   final List<Map<String, dynamic>> dailyStats = [
-    {'label': 'Reported', 'count': '15', 'color': Colors.red, 'icon': Icons.report_gmailerrorred},
-    {'label': 'Assigned', 'count': '08', 'color': Colors.blue, 'icon': Icons.assignment_ind},
-    {'label': 'In Progress', 'count': '05', 'color': Colors.orange, 'icon': Icons.handyman},
-    {'label': 'Completed', 'count': '12', 'color': Colors.green, 'icon': Icons.check_circle},
+    {
+      'label': 'Reported',
+      'count': '15',
+      'color': Colors.red,
+      'icon': Icons.report_gmailerrorred,
+    },
+    {
+      'label': 'Assigned',
+      'count': '08',
+      'color': Colors.blue,
+      'icon': Icons.assignment_ind,
+    },
+    {
+      'label': 'In Progress',
+      'count': '05',
+      'color': Colors.orange,
+      'icon': Icons.handyman,
+    },
+    {
+      'label': 'Completed',
+      'count': '12',
+      'color': Colors.green,
+      'icon': Icons.check_circle,
+    },
   ];
 
   @override
@@ -97,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildRecentIssues(),
                 const SizedBox(height: 24),
                 // --- NEW SECTION ADDED HERE ---
-                _buildDailyStats(), 
+                _buildDailyStats(),
                 const SizedBox(height: 24),
                 _buildHowItWorks(),
                 const SizedBox(height: 100),
@@ -111,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ... (Previous methods: _buildHeader, _buildLeaderboard remain unchanged) ...
-  
+
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -119,19 +219,42 @@ class _HomeScreenState extends State<HomeScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'NagarSetu',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[700],
+            RichText(
+              text: const TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Nagar',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  TextSpan(
+                    text: 'Setu',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
-              'Hello, User',
+              'Hello, $_firstName',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _getGreeting(),
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w500,
               ),
@@ -207,8 +330,27 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          ...topContributors.map(
-            (contributor) => _buildContributorItem(contributor),
+          Builder(
+            builder: (context) {
+              final uiContributors = _leaderboard.isNotEmpty
+                  ? _leaderboard.asMap().entries.map((e) {
+                      final idx = e.key;
+                      final entry = e.value;
+                      return {
+                        'name': entry.fullName,
+                        'points': entry.score,
+                        'rank': idx + 1,
+                        'avatar': _initials(entry.fullName),
+                      };
+                    }).toList()
+                  : topContributors;
+
+              return Column(
+                children: uiContributors
+                    .map((contributor) => _buildContributorItem(contributor))
+                    .toList(),
+              );
+            },
           ),
         ],
       ),
@@ -468,7 +610,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: stat['color'],
                 ),
               ),
-              Icon(stat['icon'], color: stat['color'].withOpacity(0.6), size: 30),
+              Icon(
+                stat['icon'],
+                color: stat['color'].withOpacity(0.6),
+                size: 30,
+              ),
             ],
           ),
           const SizedBox(height: 5),

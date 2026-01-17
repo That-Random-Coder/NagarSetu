@@ -835,7 +835,7 @@ class _ProfileCard extends StatelessWidget {
                   child: Text(
                     title,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[800],
                       height: 1.2, // Consistent height
@@ -896,7 +896,7 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 color: Colors.grey[600],
                 height: 1.4, // Consistent line height
               ),
@@ -909,7 +909,7 @@ class _DetailRow extends StatelessWidget {
               value,
               textAlign: TextAlign.left, // Aligns text to the left
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: Colors.grey[800],
                 height: 1.4,
@@ -960,13 +960,13 @@ class _StatBox extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
         ],
       ),
     );
@@ -1001,7 +1001,7 @@ class _BadgeChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: color,
             ),
@@ -1046,7 +1046,7 @@ class _SettingRow extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   color: Colors.grey[800],
                   height: 1.2,
                 ),
@@ -1088,7 +1088,7 @@ class _SupportRow extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   color: Colors.grey[800],
                   height: 1.2,
                 ),

@@ -42,10 +42,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   bool _isListening = false;
 
   final List<Map<String, dynamic>> issueTypes = [
-    {'icon': Icons.electrical_services, 'label': 'Electricity'},
-    {'icon': Icons.water_drop_outlined, 'label': 'Water'},
-    {'icon': Icons.delete_outline, 'label': 'Waste'},
-    {'icon': Icons.cell_tower, 'label': 'Telecom'},
+    {'icon': Icons.add_road, 'label': 'ROAD'},
+    {'icon': Icons.water_drop_outlined, 'label': 'WATER'},
+    {'icon': Icons.delete_outline, 'label': 'GARBAGE'},
+    {'icon': Icons.directions_car, 'label': 'VEHICLE'},
+    {'icon': Icons.lightbulb_outline, 'label': 'STREETLIGHT'},
+    {'icon': Icons.more_horiz, 'label': 'OTHER'},
   ];
 
   final List<String> criticalityLevels = ['High', 'Medium', 'Low'];
@@ -508,9 +510,17 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(issueTypes.length, (index) {
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.0,
+          ),
+          itemCount: issueTypes.length,
+          itemBuilder: (context, index) {
             final isSelected = _selectedIssueType == index;
             return GestureDetector(
               onTap: () {
@@ -518,50 +528,48 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   _selectedIssueType = index;
                 });
               },
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.blue[600] : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.blue[600]!
-                            : Colors.grey[300]!,
-                        width: 1.5,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: Colors.blue.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Icon(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.blue[600] : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? Colors.blue[600]! : Colors.grey[300]!,
+                    width: 1.5,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.blue.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
                       issueTypes[index]['icon'],
                       color: isSelected ? Colors.white : Colors.grey[600],
                       size: 28,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    issueTypes[index]['label'],
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      color: isSelected ? Colors.blue[600] : Colors.grey[600],
+                    const SizedBox(height: 8),
+                    Text(
+                      issueTypes[index]['label'],
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: isSelected ? Colors.white : Colors.grey[600],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
-          }),
+          },
         ),
       ],
     );

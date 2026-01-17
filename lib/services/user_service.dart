@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../config/environment.dart';
 import '../models/user_model.dart';
+import '../models/leaderboard_entry.dart';
 import 'secure_storage_service.dart';
 
 /// Service for user-related API operations.
@@ -145,6 +146,48 @@ class UserService {
         success: false,
         message: 'An error occurred while fetching user matrix.',
       );
+    }
+  }
+
+  static Future<List<LeaderboardEntry>> getLeaderboard() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.getLeaderboardEndpoint}',
+      );
+
+      if (Environment.enableLogging) {
+        print('GET LEADERBOARD: $uri');
+      }
+
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      if (Environment.enableLogging) {
+        print(
+          'GET LEADERBOARD RESPONSE: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is List) {
+          return data
+              .map((e) => LeaderboardEntry.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+        return [];
+      } else if (response.statusCode == 401) {
+        return [];
+      } else {
+        return [];
+      }
+    } on SocketException {
+      return [];
+    } catch (e) {
+      if (Environment.enableLogging) print('GET LEADERBOARD ERROR: $e');
+      return [];
     }
   }
 
