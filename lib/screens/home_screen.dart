@@ -3,6 +3,7 @@ import 'report_issue_screen.dart';
 import 'my_issues_screen.dart';
 import 'map_screen.dart';
 import 'profile_screen.dart';
+import '../services/localization_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,6 +14,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final LocalizationService _localization = LocalizationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _localization.addListener(_onLocaleChanged);
+  }
+
+  @override
+  void dispose() {
+    _localization.removeListener(_onLocaleChanged);
+    super.dispose();
+  }
+
+  void _onLocaleChanged() {
+    setState(() {});
+  }
 
   final List<Map<String, dynamic>> topContributors = [
     {'name': 'Ethan Carter', 'points': 1250, 'rank': 1, 'avatar': 'EC'},
@@ -286,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Recent Issues',
+              _localization.translate('recent_issues'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -296,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton(
               onPressed: () {},
               child: Text(
-                'See All',
+                _localization.translate('view_issues'),
                 style: TextStyle(color: Colors.blue[600], fontSize: 14),
               ),
             ),
@@ -492,11 +510,27 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home_rounded, 'Home', 0),
-              _buildNavItem(Icons.assignment_outlined, 'My Issues', 1),
+              _buildNavItem(
+                Icons.home_rounded,
+                _localization.translate('home'),
+                0,
+              ),
+              _buildNavItem(
+                Icons.assignment_outlined,
+                _localization.translate('my_issues'),
+                1,
+              ),
               _buildReportButton(),
-              _buildNavItem(Icons.map_outlined, 'Map', 3),
-              _buildNavItem(Icons.person_outline_rounded, 'Profile', 4),
+              _buildNavItem(
+                Icons.map_outlined,
+                _localization.translate('map'),
+                3,
+              ),
+              _buildNavItem(
+                Icons.person_outline_rounded,
+                _localization.translate('profile'),
+                4,
+              ),
             ],
           ),
         ),

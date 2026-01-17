@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'issue_detail_screen.dart';
 import '../services/issue_service.dart';
+import '../services/localization_service.dart';
 import '../models/issue_model.dart';
 import '../widgets/lottie_loader.dart';
 
@@ -83,6 +84,7 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = LocalizationService();
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -93,7 +95,7 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'My Issues',
+          l10n.translate('my_issues'),
           style: TextStyle(
             color: Colors.grey[800],
             fontWeight: FontWeight.w600,
@@ -113,9 +115,13 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
   }
 
   Widget _buildBody() {
+    final l10n = LocalizationService();
     if (_isLoading) {
-      return const Center(
-        child: LottieLoader(size: 120, message: 'Loading issues...'),
+      return Center(
+        child: LottieLoader(
+          size: 120,
+          message: l10n.translate('loading_issues'),
+        ),
       );
     }
 
@@ -132,7 +138,10 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _fetchIssues, child: const Text('Retry')),
+            ElevatedButton(
+              onPressed: _fetchIssues,
+              child: Text(l10n.translate('retry')),
+            ),
           ],
         ),
       );
@@ -146,7 +155,7 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
             Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'No issues reported yet',
+              l10n.translate('no_issues_reported'),
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 16,
@@ -155,7 +164,7 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Report an issue to see it here',
+              l10n.translate('report_issue_to_see'),
               style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),
           ],

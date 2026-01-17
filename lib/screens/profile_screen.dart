@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../services/localization_service.dart';
 import '../widgets/lottie_loader.dart';
 import 'discover.dart';
 import 'help.dart';
@@ -22,11 +23,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Settings state
   bool _notificationsEnabled = true;
-  String _selectedLanguage = 'English';
+  String _selectedLanguage = LocalizationService().currentLanguage;
 
   @override
   void initState() {
     super.initState();
+    _selectedLanguage = LocalizationService().currentLanguage;
     _loadUserProfile();
   }
 
@@ -513,13 +515,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSettingsCard() {
+    final l10n = LocalizationService();
     return _ProfileCard(
-      title: 'Settings',
+      title: l10n.translate('settings'),
       icon: Icons.settings_outlined,
       children: [
         _SettingRow(
           icon: Icons.notifications_outlined,
-          label: 'Notifications',
+          label: l10n.translate('notifications'),
           trailing: Switch(
             value: _notificationsEnabled,
             onChanged: (val) => setState(() => _notificationsEnabled = val),
@@ -530,7 +533,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const _CardDivider(),
         _SettingRow(
           icon: Icons.translate,
-          label: 'Language',
+          label: l10n.translate('language'),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -542,7 +545,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               underline: const SizedBox(),
               isDense: true,
               icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey[600]),
-              items: ['English', 'हिंदी', 'मराठी', 'தமிழ்', 'తెలుగు']
+              items: ['English', 'मराठी', 'हिंदी', 'தமிழ்', 'తెలుగు']
                   .map(
                     (lang) => DropdownMenuItem(
                       value: lang,
@@ -553,14 +556,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   )
                   .toList(),
-              onChanged: (val) => setState(() => _selectedLanguage = val!),
+              onChanged: (val) async {
+                if (val != null) {
+                  await LocalizationService().setLanguage(val);
+                  setState(() => _selectedLanguage = val);
+                }
+              },
             ),
           ),
         ),
         const _CardDivider(),
         _SettingRow(
           icon: Icons.dark_mode_outlined,
-          label: 'Dark Mode',
+          label: l10n.translate('dark_mode'),
           trailing: Switch(
             value: false,
             onChanged: (val) {},
@@ -573,13 +581,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSupportCard() {
+    final l10n = LocalizationService();
     return _ProfileCard(
-      title: 'Support & Info',
+      title: l10n.translate('support_info'),
       icon: Icons.help_outline,
       children: [
         _SupportRow(
           icon: Icons.help_center_outlined,
-          label: 'Help & FAQs',
+          label: l10n.translate('help_center'),
           onTap: () {
             Navigator.push(
               context,
@@ -588,13 +597,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         ),
         const _CardDivider(),
-        _SupportRow(icon: Icons.info_outline, label: 'About NagarSetu'),
+        _SupportRow(icon: Icons.info_outline, label: l10n.translate('about')),
         const _CardDivider(),
-        _SupportRow(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy'),
+        _SupportRow(
+          icon: Icons.privacy_tip_outlined,
+          label: l10n.translate('privacy_policy'),
+        ),
         const _CardDivider(),
         _SupportRow(
           icon: Icons.description_outlined,
-          label: 'Terms of Service',
+          label: l10n.translate('terms_of_service'),
         ),
         const _CardDivider(),
         _SupportRow(icon: Icons.feedback_outlined, label: 'Send Feedback'),
@@ -603,14 +615,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLogoutButton() {
+    final l10n = LocalizationService();
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: _showLogoutDialog,
         icon: const Icon(Icons.logout, color: Colors.red),
-        label: const Text(
-          'Logout',
-          style: TextStyle(
+        label: Text(
+          l10n.translate('logout'),
+          style: const TextStyle(
             color: Colors.red,
             fontWeight: FontWeight.w600,
             fontSize: 16,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:timelines_plus/timelines_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../config/environment.dart';
 import '../services/issue_service.dart';
 import '../models/issue_model.dart';
 import '../widgets/lottie_loader.dart';
@@ -78,6 +80,143 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     }
   }
 
+  Widget _buildHorizontalTimeline(String currentStatus) {
+    final stages = [
+      {
+        'key': 'PENDING',
+        'label': 'Pending',
+        'icon': Icons.hourglass_empty,
+        'color': Colors.red,
+      },
+      {
+        'key': 'ACKNOWLEDGED',
+        'label': 'Acknowledged',
+        'icon': Icons.visibility,
+        'color': Colors.blue,
+      },
+      {
+        'key': 'TEAM_ASSIGNED',
+        'label': 'Team Assigned',
+        'icon': Icons.groups,
+        'color': Colors.purple,
+      },
+      {
+        'key': 'IN_PROGRESS',
+        'label': 'In Progress',
+        'icon': Icons.autorenew,
+        'color': Colors.orange,
+      },
+      {
+        'key': 'RESOLVED',
+        'label': 'Resolved',
+        'icon': Icons.check_circle,
+        'color': Colors.green,
+      },
+    ];
+
+    int currentIndex = stages.indexWhere((s) {
+      final normalizedStage = (s['key'] as String)
+          .replaceAll(RegExp(r'[_\s]+'), '')
+          .toLowerCase();
+      final normalizedCurrent = currentStatus
+          .replaceAll(RegExp(r'[_\s]+'), '')
+          .toLowerCase();
+      return normalizedStage == normalizedCurrent;
+    });
+
+    if (currentIndex == -1) currentIndex = 0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(stages.length, (i) {
+          final stage = stages[i];
+          final bool completed = i < currentIndex;
+          final bool active = i == currentIndex;
+          final Color stageColor = stage['color'] as Color;
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: completed
+                          ? Colors.green
+                          : (active
+                                ? stageColor.withOpacity(0.15)
+                                : Colors.grey[100]),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: completed
+                            ? Colors.green
+                            : (active ? stageColor : Colors.grey[300]!),
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        completed ? Icons.check : stage['icon'] as IconData,
+                        color: completed
+                            ? Colors.white
+                            : (active ? stageColor : Colors.grey[500]),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: 58,
+                    child: Text(
+                      stage['label'] as String,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: active
+                            ? stageColor
+                            : (completed ? Colors.green : Colors.grey[600]),
+                        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (i != stages.length - 1)
+                Container(
+                  width: 20,
+                  height: 3,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: i < currentIndex ? Colors.green : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,218 +285,23 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
 
   Widget _buildIssueContent() {
     final issue = _issue!;
-    final List<IssueTimeline> timeline = issue.timeline.reversed.toList();
     final LatLng location = LatLng(issue.latitude, issue.longitude);
-    final int displayCompletedIndex = timeline.indexWhere(
-      (t) => t.status.toLowerCase() == issue.status.toLowerCase(),
-    );
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (timeline.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: FixedTimeline.tileBuilder(
-                theme: TimelineThemeData(
-                  nodePosition: 0,
-                  connectorTheme: const ConnectorThemeData(
-                    thickness: 2.5,
-                    color: Color(0xFFE0E0E0),
-                  ),
-                ),
-                builder: TimelineTileBuilder.connected(
-                  connectionDirection: ConnectionDirection.before,
-                  itemCount: timeline.length,
-                  contentsBuilder: (context, index) {
-                    final item = timeline[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 16, bottom: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.status,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.description,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  indicatorBuilder: (context, index) {
-                    final bool isCompleted =
-                        displayCompletedIndex >= 0 &&
-                        index <= displayCompletedIndex;
-                    if (isCompleted) {
-                      return Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      );
-                    }
-                    return Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey[350]!, width: 2),
-                      ),
-                      child: Icon(
-                        _getStatusIcon(timeline[index].status),
-                        color: Colors.grey[500],
-                        size: 16,
-                      ),
-                    );
-                  },
-                  connectorBuilder: (context, index, type) {
-                    final bool activeConnector =
-                        displayCompletedIndex >= 0 &&
-                        index <= displayCompletedIndex;
-                    if (activeConnector) {
-                      return const SolidLineConnector(
-                        color: Colors.green,
-                        thickness: 2.5,
-                      );
-                    }
-                    return DashedLineConnector(
-                      color: Colors.grey[350]!,
-                      thickness: 2.0,
-                      dash: 6.0,
-                    );
-                  },
-                ),
-              ),
-            ),
+          // Horizontal Timeline
+          _buildHorizontalTimeline(issue.status),
+
           // Issue Image
-          if (issue.imageUrl != null && issue.imageUrl!.isNotEmpty)
-            Container(
-              height: 220,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.15),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  issue.imageUrl!,
-                  width: double.infinity,
-                  height: 220,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.grey[200],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[200],
-                      child: Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          if (issue.imageUrl != null && issue.imageUrl!.isNotEmpty)
+          if (issue.imageUrl != null && issue.imageUrl!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _CloudinaryImage(url: issue.imageUrl!),
             const SizedBox(height: 16),
-          // Map
-          Container(
-            height: 220,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.15),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: FlutterMap(
-                options: MapOptions(initialCenter: location, initialZoom: 15.0),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.nagarsetu.app',
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: location,
-                        width: 40,
-                        height: 40,
-                        child: Icon(
-                          Icons.location_pin,
-                          color: Colors.blue[600],
-                          size: 40,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
+          ],
+
+          // Description / Details
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -468,8 +412,160 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               ),
             ),
           ),
+
+          const SizedBox(height: 16),
+
+          // Map below description
+          Container(
+            height: 220,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: FlutterMap(
+                options: MapOptions(initialCenter: location, initialZoom: 15.0),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.nagarsetu.app',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: location,
+                        width: 40,
+                        height: 40,
+                        child: Icon(
+                          Icons.location_pin,
+                          color: Colors.blue[600],
+                          size: 40,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 30),
         ],
+      ),
+    );
+  }
+}
+
+class _CloudinaryImage extends StatefulWidget {
+  final String url;
+  const _CloudinaryImage({Key? key, required this.url}) : super(key: key);
+
+  @override
+  State<_CloudinaryImage> createState() => _CloudinaryImageState();
+}
+
+class _CloudinaryImageState extends State<_CloudinaryImage> {
+  late final List<String> _candidates;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _candidates = _buildCandidates(widget.url);
+    if (Environment.enableLogging) {
+      print('Image candidates: $_candidates');
+    }
+  }
+
+  List<String> _buildCandidates(String original) {
+    final List<String> list = [];
+    list.add(original);
+
+    final uri = Uri.tryParse(original);
+    if (uri != null) {
+      // Strip query params and fragment
+      final base = uri
+          .replace(queryParameters: {}, fragment: '')
+          .toString()
+          .split('?')
+          .first;
+      if (!list.contains(base)) list.add(base);
+
+      // If there's no extension, try common ones
+      final hasExt = base.split('/').last.contains('.');
+      if (!hasExt) {
+        if (!list.contains('$base.jpg')) list.add('$base.jpg');
+        if (!list.contains('$base.png')) list.add('$base.png');
+        if (!list.contains('$base.jpeg')) list.add('$base.jpeg');
+      }
+
+      // Try adding format param
+      if (!original.contains('?')) {
+        final withFormat = '$original?format=jpg';
+        if (!list.contains(withFormat)) list.add(withFormat);
+      }
+    }
+
+    return list;
+  }
+
+  void _tryNext() {
+    if (_index < _candidates.length - 1) {
+      setState(() {
+        _index += 1;
+        if (Environment.enableLogging)
+          print('Retrying image with: ${_candidates[_index]}');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _candidates[_index];
+    return Container(
+      height: 220,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: CachedNetworkImage(
+          imageUrl: url,
+          width: double.infinity,
+          height: 220,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            color: Colors.grey[200],
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+          errorWidget: (context, url, error) {
+            if (Environment.enableLogging)
+              print('Image load error: $error for URL: $url');
+            // Try next candidate
+            WidgetsBinding.instance.addPostFrameCallback((_) => _tryNext());
+            return Container(
+              color: Colors.grey[200],
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          },
+        ),
       ),
     );
   }
