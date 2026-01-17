@@ -20,6 +20,7 @@ class Environment {
   // User endpoints
   static const String userEndpoint = '$apiVersion/user';
   static const String getUserEndpoint = '$userEndpoint/get';
+  static const String getUserMatrixEndpoint = '$userEndpoint/getMatrix';
 
   // Issue endpoints
   static const String issueEndpoint = '$apiVersion/issue';

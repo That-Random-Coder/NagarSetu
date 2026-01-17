@@ -24,12 +24,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Settings state
   bool _notificationsEnabled = true;
   String _selectedLanguage = LocalizationService().currentLanguage;
+  final LocalizationService _l10n = LocalizationService();
+  int _matrixReported = 0;
+  int _matrixInProgress = 0;
+  int _matrixResolved = 0;
 
   @override
   void initState() {
     super.initState();
-    _selectedLanguage = LocalizationService().currentLanguage;
+    _selectedLanguage = _l10n.currentLanguage;
+    _l10n.addListener(_onLocaleChanged);
     _loadUserProfile();
+  }
+
+  Future<void> _loadUserMatrix(String userId) async {
+    final res = await UserService.getUserMatrix(userId);
+    if (!mounted) return;
+    if (res.success) {
+      setState(() {
+        _matrixReported = res.reportedIssue;
+        _matrixInProgress = res.inProgressIssue;
+        _matrixResolved = res.resolvedIssue;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _l10n.removeListener(_onLocaleChanged);
+    super.dispose();
+  }
+
+  void _onLocaleChanged() {
+    if (!mounted) return;
+    setState(() {
+      _selectedLanguage = _l10n.currentLanguage;
+    });
   }
 
   /// Load user profile from API
@@ -51,6 +81,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _user = response.user;
         _isLoading = false;
       });
+      final userId = response.user!.id;
+      _loadUserMatrix(userId);
     } else if (response.isUnauthorized) {
       // Session expired, redirect to login
       await AuthService.logout();
@@ -63,7 +95,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       setState(() {
         _hasError = true;
-        _errorMessage = response.message ?? 'Failed to load profile';
+        _errorMessage =
+            response.message ?? _l10n.translate('failed_to_load_profile');
         _isLoading = false;
       });
     }
@@ -76,7 +109,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const LottieLoader(size: 120, message: 'Loading profile...');
+      return LottieLoader(
+        size: 120,
+        message: _l10n.translate('loading_profile'),
+      );
     }
 
     if (_hasError) {
@@ -186,116 +222,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           child: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40),
-                // Profile Avatar
-                Stack(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
+            child: Center(
+              // Added Center widget here
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment:
+                    CrossAxisAlignment.center, // Enforce horizontal center
+                children: [
+                  const SizedBox(height: 20), // Adjusted spacing
+                  // Profile Avatar
+                  Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.blue[200],
+                          child: Text(
+                            user.initials,
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.blue[200],
-                        child: Text(
-                          user.initials,
+                      if (user.isVerified)
+                        Positioned(
+                          bottom: 4,
+                          right: 4,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.verified,
+                              color: Colors.blue[600],
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // User Name
+                  Text(
+                    user.displayName,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Role Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _getRoleIcon(user.displayRole),
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          user.displayRole,
                           style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
                             color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
                           ),
                         ),
-                      ),
-                    ),
-                    if (user.isVerified)
-                      Positioned(
-                        bottom: 4,
-                        right: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.verified,
-                            color: Colors.blue[600],
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // User Name
-                Text(
-                  user.displayName,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Role Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.4),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 8),
+                  // Location
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        _getRoleIcon(user.displayRole),
-                        color: Colors.white,
+                        Icons.location_on_outlined,
+                        color: Colors.white.withValues(alpha: 0.9),
                         size: 16,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Text(
-                        user.displayRole,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                        user.displayLocation,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13,
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                // Location
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      color: Colors.white.withValues(alpha: 0.9),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      user.displayLocation,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -306,31 +347,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildPersonalDetailsCard() {
     final user = _user!;
     return _ProfileCard(
-      title: 'Personal Details',
+      title: _l10n.translate('personal_details'),
       icon: Icons.person_outline,
       children: [
         _DetailRow(
           icon: Icons.phone_outlined,
-          label: 'Mobile',
+          label: _l10n.translate('mobile'),
           value: user.displayPhone,
         ),
         const _CardDivider(),
         _DetailRow(
           icon: Icons.email_outlined,
-          label: 'Email',
+          label: _l10n.translate('email'),
           value: user.displayEmail,
         ),
         const _CardDivider(),
         _DetailRow(
           icon: Icons.location_city_outlined,
-          label: 'Location',
+          label: _l10n.translate('location'),
           value: user.displayLocation,
         ),
         if (user.gender != null) ...[
           const _CardDivider(),
           _DetailRow(
             icon: Icons.person_outline,
-            label: 'Gender',
+            label: _l10n.translate('gender'),
             value: user.gender!,
           ),
         ],
@@ -338,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const _CardDivider(),
           _DetailRow(
             icon: Icons.cake_outlined,
-            label: 'Age',
+            label: _l10n.translate('age'),
             value: '${user.age} years',
           ),
         ],
@@ -346,7 +387,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const _CardDivider(),
           _DetailRow(
             icon: Icons.calendar_today_outlined,
-            label: 'Member Since',
+            label: _l10n.translate('member_since'),
             value: user.memberSince!,
           ),
         ],
@@ -357,15 +398,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildActivitySummaryCard() {
     final user = _user!;
     return _ProfileCard(
-      title: 'Activity Summary',
+      title: _l10n.translate('activity_summary'),
       icon: Icons.analytics_outlined,
       children: [
         Row(
           children: [
             Expanded(
               child: _StatBox(
-                label: 'Reported',
-                value: user.issuesReported.toString(),
+                label: _l10n.translate('reported'),
+                value: _matrixReported.toString(),
                 color: Colors.blue,
                 icon: Icons.report_outlined,
               ),
@@ -373,21 +414,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: _StatBox(
-                label: 'Resolved',
-                value: user.issuesResolved.toString(),
-                color: Colors.green,
-                icon: Icons.check_circle_outline,
+                label: _l10n.translate('in_progress'),
+                value: _matrixInProgress.toString(),
+                color: Colors.orange,
+                icon: Icons.autorenew,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _StatBox(
-                label: 'In Progress',
-                value: user.issuesInProgress.toString(),
-                color: Colors.orange,
-                icon: Icons.pending_outlined,
+                label: _l10n.translate('resolved_label'),
+                value: _matrixResolved.toString(),
+                color: Colors.green,
+                icon: Icons.check_circle_outline,
               ),
             ),
+            const SizedBox(width: 12),
           ],
         ),
       ],
@@ -515,7 +557,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSettingsCard() {
-    final l10n = LocalizationService();
+    final l10n = _l10n;
     return _ProfileCard(
       title: l10n.translate('settings'),
       icon: Icons.settings_outlined,
@@ -558,8 +600,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   .toList(),
               onChanged: (val) async {
                 if (val != null) {
-                  await LocalizationService().setLanguage(val);
+                  await _l10n.setLanguage(val);
                   setState(() => _selectedLanguage = val);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${_l10n.translate('language_changed')} $val',
+                      ),
+                    ),
+                  );
                 }
               },
             ),
@@ -581,14 +630,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSupportCard() {
-    final l10n = LocalizationService();
     return _ProfileCard(
-      title: l10n.translate('support_info'),
+      title: 'Support & Info',
       icon: Icons.help_outline,
       children: [
         _SupportRow(
           icon: Icons.help_center_outlined,
-          label: l10n.translate('help_center'),
+          label: 'Help & FAQs',
           onTap: () {
             Navigator.push(
               context,
@@ -597,16 +645,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         ),
         const _CardDivider(),
-        _SupportRow(icon: Icons.info_outline, label: l10n.translate('about')),
+        _SupportRow(icon: Icons.info_outline, label: 'About NagarSetu'),
         const _CardDivider(),
-        _SupportRow(
-          icon: Icons.privacy_tip_outlined,
-          label: l10n.translate('privacy_policy'),
-        ),
+        _SupportRow(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy'),
         const _CardDivider(),
         _SupportRow(
           icon: Icons.description_outlined,
-          label: l10n.translate('terms_of_service'),
+          label: 'Terms of Service',
         ),
         const _CardDivider(),
         _SupportRow(icon: Icons.feedback_outlined, label: 'Send Feedback'),
@@ -615,15 +660,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLogoutButton() {
-    final l10n = LocalizationService();
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: _showLogoutDialog,
         icon: const Icon(Icons.logout, color: Colors.red),
-        label: Text(
-          l10n.translate('logout'),
-          style: const TextStyle(
+        label: const Text(
+          'Logout',
+          style: TextStyle(
             color: Colors.red,
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -713,18 +757,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // Close dialog first
               Navigator.pop(dialogContext);
-
-              // Show loading
-              if (mounted) {
-                setState(() => _isLoading = true);
-              }
-
-              // Clear auth data
+              if (mounted) setState(() => _isLoading = true);
               await AuthService.logout();
-
-              // Navigate to Discover
               if (mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,
@@ -784,6 +819,8 @@ class _ProfileCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
             child: Row(
+              crossAxisAlignment:
+                  CrossAxisAlignment.center, // Enforce vertical center
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -801,6 +838,7 @@ class _ProfileCard extends StatelessWidget {
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[800],
+                      height: 1.2, // Consistent height
                     ),
                   ),
                 ),
@@ -818,6 +856,7 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
+// --- UPDATED _DetailRow FOR STRICT ALIGNMENT ---
 class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -834,19 +873,46 @@ class _DetailRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment
+            .start, // Align to top for better multi-line support
         children: [
-          Icon(icon, color: Colors.grey[500], size: 20),
+          // 1. Icon (with slight top padding to align with text baseline)
+          Padding(
+            padding: const EdgeInsets.only(top: 2.0),
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: Center(
+                child: Icon(icon, color: Colors.grey[500], size: 20),
+              ),
+            ),
+          ),
           const SizedBox(width: 12),
-          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-          const Spacer(),
-          Flexible(
+
+          // 2. Label (Fixed Width Container)
+          // This ensures the "Value" always starts at the same vertical position
+          SizedBox(
+            width: 110, // Width sufficient for the longest label "Member Since"
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.4, // Consistent line height
+              ),
+            ),
+          ),
+
+          // 3. Value (Left Aligned & Expanded)
+          Expanded(
             child: Text(
               value,
-              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.left, // Aligns text to the left
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.grey[800],
+                height: 1.4,
               ),
             ),
           ),
@@ -966,13 +1032,24 @@ class _SettingRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.grey[600], size: 22),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Center(
+                child: Icon(icon, color: Colors.grey[600], size: 22),
+              ),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(fontSize: 15, color: Colors.grey[800]),
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[800],
+                  height: 1.2,
+                ),
               ),
             ),
             trailing,
@@ -995,15 +1072,26 @@ class _SupportRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.grey[600], size: 22),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Center(
+                child: Icon(icon, color: Colors.grey[600], size: 22),
+              ),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(fontSize: 15, color: Colors.grey[800]),
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[800],
+                  height: 1.2,
+                ),
               ),
             ),
             Icon(Icons.chevron_right, color: Colors.grey[400]),

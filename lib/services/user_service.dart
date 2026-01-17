@@ -75,8 +75,6 @@ class UserService {
     }
   }
 
-  /// Fetch current logged-in user profile
-  /// Uses stored user ID from SecureStorageService
   static Future<UserServiceResponse> getCurrentUser() async {
     final userId = await SecureStorageService.getUserId();
     if (userId == null || userId.isEmpty) {
@@ -87,6 +85,67 @@ class UserService {
       );
     }
     return getUserById(userId);
+  }
+
+  static Future<UserMatrixResponse> getUserMatrix(String userId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.getUserMatrixEndpoint}?id=$userId',
+      );
+
+      if (Environment.enableLogging) {
+        print('GET USER MATRIX: $uri');
+      }
+
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      if (Environment.enableLogging) {
+        print(
+          'GET USER MATRIX RESPONSE: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final reported = (data['reportedIssue'] ?? 0) as int;
+        final inProgress = (data['inProgressIssue'] ?? 0) as int;
+        final resolved = (data['resolvedIssue'] ?? 0) as int;
+        return UserMatrixResponse(
+          success: true,
+          reportedIssue: reported,
+          inProgressIssue: inProgress,
+          resolvedIssue: resolved,
+        );
+      } else if (response.statusCode == 401) {
+        return UserMatrixResponse(
+          success: false,
+          message: 'Session expired. Please login again.',
+          isUnauthorized: true,
+        );
+      } else {
+        final errorMsg = _parseErrorMessage(response.body);
+        return UserMatrixResponse(
+          success: false,
+          message: errorMsg ?? 'Failed to fetch user matrix.',
+        );
+      }
+    } on SocketException {
+      return UserMatrixResponse(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } catch (e) {
+      if (Environment.enableLogging) {
+        print('GET USER MATRIX ERROR: $e');
+      }
+      return UserMatrixResponse(
+        success: false,
+        message: 'An error occurred while fetching user matrix.',
+      );
+    }
   }
 
   /// Parse error message from API response
@@ -111,6 +170,24 @@ class UserServiceResponse {
   UserServiceResponse({
     required this.success,
     this.user,
+    this.message,
+    this.isUnauthorized = false,
+  });
+}
+
+class UserMatrixResponse {
+  final bool success;
+  final int reportedIssue;
+  final int inProgressIssue;
+  final int resolvedIssue;
+  final String? message;
+  final bool isUnauthorized;
+
+  UserMatrixResponse({
+    required this.success,
+    this.reportedIssue = 0,
+    this.inProgressIssue = 0,
+    this.resolvedIssue = 0,
     this.message,
     this.isUnauthorized = false,
   });

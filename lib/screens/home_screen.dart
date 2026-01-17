@@ -3,7 +3,6 @@ import 'report_issue_screen.dart';
 import 'my_issues_screen.dart';
 import 'map_screen.dart';
 import 'profile_screen.dart';
-import '../services/localization_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,23 +13,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  final LocalizationService _localization = LocalizationService();
-
-  @override
-  void initState() {
-    super.initState();
-    _localization.addListener(_onLocaleChanged);
-  }
-
-  @override
-  void dispose() {
-    _localization.removeListener(_onLocaleChanged);
-    super.dispose();
-  }
-
-  void _onLocaleChanged() {
-    setState(() {});
-  }
 
   final List<Map<String, dynamic>> topContributors = [
     {'name': 'Ethan Carter', 'points': 1250, 'rank': 1, 'avatar': 'EC'},
@@ -88,6 +70,14 @@ class _HomeScreenState extends State<HomeScreen> {
     },
   ];
 
+  // Mock data for daily stats
+  final List<Map<String, dynamic>> dailyStats = [
+    {'label': 'Reported', 'count': '15', 'color': Colors.red, 'icon': Icons.report_gmailerrorred},
+    {'label': 'Assigned', 'count': '08', 'color': Colors.blue, 'icon': Icons.assignment_ind},
+    {'label': 'In Progress', 'count': '05', 'color': Colors.orange, 'icon': Icons.handyman},
+    {'label': 'Completed', 'count': '12', 'color': Colors.green, 'icon': Icons.check_circle},
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,6 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
                 _buildRecentIssues(),
                 const SizedBox(height: 24),
+                // --- NEW SECTION ADDED HERE ---
+                _buildDailyStats(), 
+                const SizedBox(height: 24),
                 _buildHowItWorks(),
                 const SizedBox(height: 100),
               ],
@@ -117,6 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ... (Previous methods: _buildHeader, _buildLeaderboard remain unchanged) ...
+  
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -304,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _localization.translate('recent_issues'),
+              'Recent Issues',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -314,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton(
               onPressed: () {},
               child: Text(
-                _localization.translate('view_issues'),
+                'See All',
                 style: TextStyle(color: Colors.blue[600], fontSize: 14),
               ),
             ),
@@ -405,6 +400,87 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- NEW: Daily Stats Section ---
+  Widget _buildDailyStats() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Daily Stats (Last 24h)',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 100, // Fixed height for the stats row
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: dailyStats.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final stat = dailyStats[index];
+              return _buildStatCard(stat);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- NEW: Individual Stat Card ---
+  Widget _buildStatCard(Map<String, dynamic> stat) {
+    return Container(
+      width: 160, // Width for each card
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                stat['count'],
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                  color: stat['color'],
+                ),
+              ),
+              Icon(stat['icon'], color: stat['color'].withOpacity(0.6), size: 30),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            stat['label'],
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -510,27 +586,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                Icons.home_rounded,
-                _localization.translate('home'),
-                0,
-              ),
-              _buildNavItem(
-                Icons.assignment_outlined,
-                _localization.translate('my_issues'),
-                1,
-              ),
+              _buildNavItem(Icons.home_rounded, 'Home', 0),
+              _buildNavItem(Icons.assignment_outlined, 'My Issues', 1),
               _buildReportButton(),
-              _buildNavItem(
-                Icons.map_outlined,
-                _localization.translate('map'),
-                3,
-              ),
-              _buildNavItem(
-                Icons.person_outline_rounded,
-                _localization.translate('profile'),
-                4,
-              ),
+              _buildNavItem(Icons.map_outlined, 'Map', 3),
+              _buildNavItem(Icons.person_outline_rounded, 'Profile', 4),
             ],
           ),
         ),

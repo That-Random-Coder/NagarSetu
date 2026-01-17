@@ -140,79 +140,125 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(stages.length, (i) {
-          final stage = stages[i];
-          final bool completed = i < currentIndex;
-          final bool active = i == currentIndex;
-          final Color stageColor = stage['color'] as Color;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double connectorWidth = 20;
+          final double minStageWidth = 58;
+          final double totalMinWidth =
+              stages.length * minStageWidth +
+              (stages.length - 1) * connectorWidth;
+          final bool needsScroll = totalMinWidth > constraints.maxWidth;
 
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: completed
-                          ? Colors.green
-                          : (active
-                                ? stageColor.withOpacity(0.15)
-                                : Colors.grey[100]),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: completed
-                            ? Colors.green
-                            : (active ? stageColor : Colors.grey[300]!),
-                        width: 2,
+          Widget buildStage(int i, double stageWidth) {
+            final stage = stages[i];
+            final bool completed = i < currentIndex;
+            final bool active = i == currentIndex;
+            final Color stageColor = stage['color'] as Color;
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: stageWidth,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: completed
+                              ? Colors.green
+                              : (active
+                                    ? stageColor.withOpacity(0.15)
+                                    : Colors.grey[100]),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: completed
+                                ? Colors.green
+                                : (active ? stageColor : Colors.grey[300]!),
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            completed ? Icons.check : stage['icon'] as IconData,
+                            color: completed
+                                ? Colors.white
+                                : (active ? stageColor : Colors.grey[500]),
+                            size: 18,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        completed ? Icons.check : stage['icon'] as IconData,
-                        color: completed
-                            ? Colors.white
-                            : (active ? stageColor : Colors.grey[500]),
-                        size: 18,
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: stageWidth,
+                        child: Text(
+                          stage['label'] as String,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: active
+                                ? stageColor
+                                : (completed ? Colors.green : Colors.grey[600]),
+                            fontWeight: active
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    width: 58,
-                    child: Text(
-                      stage['label'] as String,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: active
-                            ? stageColor
-                            : (completed ? Colors.green : Colors.grey[600]),
-                        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (i != stages.length - 1)
-                Container(
-                  width: 20,
-                  height: 3,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: i < currentIndex ? Colors.green : Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
+                    ],
                   ),
                 ),
-            ],
+                if (i != stages.length - 1)
+                  SizedBox(
+                    width: connectorWidth,
+                    child: Center(
+                      child: Container(
+                        width: needsScroll ? 16 : 20,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: i < currentIndex
+                              ? Colors.green
+                              : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          }
+
+          // If space is limited, allow horizontal scrolling; otherwise center layout.
+          if (needsScroll) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: List.generate(
+                  stages.length,
+                  (i) => buildStage(i, minStageWidth),
+                ),
+              ),
+            );
+          }
+
+          final double availableStageWidth =
+              ((constraints.maxWidth - (stages.length - 1) * connectorWidth) /
+                      stages.length)
+                  .clamp(48.0, 120.0);
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              stages.length,
+              (i) => buildStage(i, availableStageWidth),
+            ),
           );
-        }),
+        },
       ),
     );
   }
@@ -320,25 +366,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Issue ID: ',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                      ),
-                      Expanded(
-                        child: Text(
-                          '#${issue.id}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[800],
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 12),
                   Text(
                     issue.title,
