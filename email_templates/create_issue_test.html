@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Issue - NagarSetu API Test</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: #1976D2;
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .form-container {
+            padding: 32px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #1976D2;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .row {
+            display: flex;
+            gap: 16px;
+        }
+        .row .form-group {
+            flex: 1;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #1976D2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #1565C0;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .response-container {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: none;
+        }
+        .response-container.show {
+            display: block;
+        }
+        .response-container.success {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+        }
+        .response-container.error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+        }
+        .response-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .response-body {
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .token-section {
+            background: #fff3e0;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            border: 1px solid #ffb74d;
+        }
+        .token-section label {
+            color: #e65100;
+        }
+        .hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .file-input-wrapper {
+            position: relative;
+        }
+        .file-input-wrapper input[type="file"] {
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏙️ NagarSetu - Create Issue</h1>
+            <p>POST /api/issue/create (Multipart Form)</p>
+        </div>
+        
+        <div class="form-container">
+            <!-- JWT Token Section -->
+            <div class="token-section">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="jwtToken">🔐 Bearer Token (JWT)</label>
+                    <input type="text" id="jwtToken" placeholder="Paste your JWT token here..." required>
+                    <p class="hint">Get this from the login response</p>
+                </div>
+            </div>
+
+            <form id="issueForm">
+                <!-- Title -->
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" name="title" maxlength="40" placeholder="e.g., Pothole on Main Street" required>
+                    <p class="hint">Max 40 characters</p>
+                </div>
+
+                <!-- Issue Type -->
+                <div class="form-group">
+                    <label for="issueType">Issue Type *</label>
+                    <select id="issueType" name="issueType" required>
+                        <option value="">Select issue type...</option>
+                        <option value="ROAD">Road</option>
+                        <option value="WATER">Water</option>
+                        <option value="ELECTRICITY">Electricity</option>
+                        <option value="GARBAGE">Garbage</option>
+                        <option value="DRAINAGE">Drainage</option>
+                        <option value="STREETLIGHT">Streetlight</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <textarea id="description" name="description" maxlength="300" placeholder="Describe the issue in detail..." required></textarea>
+                    <p class="hint">Max 300 characters</p>
+                </div>
+
+                <!-- Criticality -->
+                <div class="form-group">
+                    <label for="criticality">Criticality *</label>
+                    <select id="criticality" name="criticality" required>
+                        <option value="">Select criticality...</option>
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                        <option value="CRITICAL">Critical</option>
+                    </select>
+                </div>
+
+                <!-- Location -->
+                <div class="form-group">
+                    <label for="location">Location *</label>
+                    <input type="text" id="location" name="location" placeholder="e.g., 123 Main Street, City" required>
+                </div>
+
+                <!-- Coordinates -->
+                <div class="row">
+                    <div class="form-group">
+                        <label for="latitude">Latitude *</label>
+                        <input type="number" id="latitude" name="latitude" step="any" placeholder="e.g., 28.6139" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="longitude">Longitude *</label>
+                        <input type="number" id="longitude" name="longitude" step="any" placeholder="e.g., 77.2090" required>
+                    </div>
+                </div>
+
+                <!-- Get Current Location Button -->
+                <div class="form-group">
+                    <button type="button" onclick="getCurrentLocation()" style="background: #4caf50; padding: 10px 16px; font-size: 13px;">
+                        📍 Use Current Location
+                    </button>
+                </div>
+
+                <!-- Submitted By -->
+                <div class="form-group">
+                    <label for="submittedById">Submitted By (User ID) *</label>
+                    <input type="text" id="submittedById" name="submittedById" placeholder="UUID of the user submitting" required>
+                    <p class="hint">Must match the authenticated user's ID</p>
+                </div>
+
+                <!-- Image -->
+                <div class="form-group">
+                    <label for="image">Issue Image *</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="image" name="image" accept="image/*" required>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn" id="submitBtn">
+                    🚀 Create Issue
+                </button>
+            </form>
+
+            <!-- Response Container -->
+            <div class="response-container" id="responseContainer">
+                <div class="response-title" id="responseTitle">Response</div>
+                <div class="response-body" id="responseBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:7889';
+
+        // Get current location
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        document.getElementById('latitude').value = position.coords.latitude;
+                        document.getElementById('longitude').value = position.coords.longitude;
+                    },
+                    (error) => {
+                        alert('Error getting location: ' + error.message);
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by this browser.');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('issueForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const responseContainer = document.getElementById('responseContainer');
+            const responseTitle = document.getElementById('responseTitle');
+            const responseBody = document.getElementById('responseBody');
+
+            const jwtToken = document.getElementById('jwtToken').value.trim();
+            if (!jwtToken) {
+                alert('Please enter a JWT token');
+                return;
+            }
+
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Creating Issue...';
+
+            // Build the IssueCreateDto JSON object
+            const issueCreateDto = {
+                title: document.getElementById('title').value,
+                issueType: document.getElementById('issueType').value,
+                description: document.getElementById('description').value,
+                criticality: document.getElementById('criticality').value,
+                location: document.getElementById('location').value,
+                latitude: parseFloat(document.getElementById('latitude').value),
+                longitude: parseFloat(document.getElementById('longitude').value),
+                submittedById: document.getElementById('submittedById').value
+            };
+
+            // Create FormData for multipart request
+            const formData = new FormData();
+            
+            // Add issueCreateDto as JSON blob
+            formData.append('issueCreateDto', new Blob([JSON.stringify(issueCreateDto)], {
+                type: 'application/json'
+            }));
+
+            // Add image file
+            const imageFile = document.getElementById('image').files[0];
+            formData.append('image', imageFile);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/issue/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    },
+                    body: formData
+                });
+
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+
+                responseContainer.className = 'response-container show ' + (response.ok ? 'success' : 'error');
+                responseTitle.textContent = response.ok ? '✅ Success (Status: ' + response.status + ')' : '❌ Error (Status: ' + response.status + ')';
+                responseBody.textContent = typeof responseData === 'object' 
+                    ? JSON.stringify(responseData, null, 2) 
+                    : responseData;
+
+                if (response.ok) {
+                    // Clear form on success
+                    document.getElementById('issueForm').reset();
+                }
+
+            } catch (error) {
+                responseContainer.className = 'response-container show error';
+                responseTitle.textContent = '❌ Network Error';
+                responseBody.textContent = error.message;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Create Issue';
+            }
+        });
+    </script>
+</body>
+</html>

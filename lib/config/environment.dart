@@ -6,7 +6,7 @@ class Environment {
   /// Base URL for the API server
   /// Change this for different environments (dev, staging, production)
   static const String apiBaseUrl =
-      'https://conservative-harris-accessory-experimental.trycloudflare.com';
+      'https://sydney-skirts-guidance-intensity.trycloudflare.com';
 
   /// API endpoints
   static const String apiVersion = '/api';
