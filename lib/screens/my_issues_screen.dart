@@ -112,6 +112,26 @@ class MyIssuesScreen extends StatelessWidget {
         },
       ],
     },
+    {
+      'id': 'NS2026-001238',
+      'title': 'Broken Drainage Cover',
+      'type': 'Road',
+      'status': 'Pending',
+      'statusColor': Colors.red,
+      'reportedDate': 'January 17, 2026',
+      'location': 'MG Road, Near Bus Stop',
+      'description':
+          'Drainage cover is broken and causing safety hazard for pedestrians.',
+      'latitude': 28.6180,
+      'longitude': 77.1980,
+      'timeline': [
+        {
+          'status': 'Pending',
+          'date': '01/17/2026',
+          'description': 'Waiting for acknowledgement',
+        },
+      ],
+    },
   ];
 
   IconData _getIssueIcon(String type) {
