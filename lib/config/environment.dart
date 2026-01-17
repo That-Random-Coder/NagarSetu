@@ -31,8 +31,8 @@ class Environment {
 
   /// Groq AI API Key (Free tier: 30 RPM, 14,400 RPD - FASTEST)
   /// Get your free API key from: https://console.groq.com/keys
-  static const String groqApiKey =
-      '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';
+  // static const String groqApiKey =
+  //     '[YOUR KEY]';
 
   /// Which AI provider to use: 'gemini' or 'groq'
   static const String aiProvider = 'groq';
