@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/issue_service.dart';
 import '../models/issue_map_model.dart';
+import '../models/issue_model.dart';
 import '../widgets/lottie_loader.dart';
 import 'issue_detail_screen.dart';
 
@@ -425,11 +426,6 @@ class _MapScreenState extends State<MapScreen> {
                 ),
                 const SizedBox(height: 8),
                 _buildMapButton(
-                  icon: Icons.bug_report,
-                  onTap: _testApiConnection,
-                ),
-                const SizedBox(height: 8),
-                _buildMapButton(
                   icon: Icons.add,
                   onTap: () {
                     _mapController.move(_currentCenter, _currentZoom + 1);
@@ -741,6 +737,56 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
             const SizedBox(height: 16),
+            FutureBuilder<ApiResult<IssueModel>>(
+              future: IssueService.getIssueById(issue.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Loading details...',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  );
+                }
+
+                if (!snapshot.hasData ||
+                    !snapshot.data!.success ||
+                    snapshot.data!.data == null) {
+                  return const SizedBox();
+                }
+
+                final issueDetail = snapshot.data!.data!;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      issueDetail.title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      issueDetail.description,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                );
+              },
+            ),
             Row(
               children: [
                 Container(
