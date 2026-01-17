@@ -11,11 +11,34 @@ class Environment {
   /// API endpoints
   static const String apiVersion = '/api';
 
-  // Authentication endpoints
+  // Authentication endpoints (for Citizens)
   static const String authEndpoint = '$apiVersion/authenication';
   static const String loginEndpoint = '$authEndpoint/login';
   static const String registerEndpoint = '$authEndpoint/registration';
   static const String getCodeEndpoint = '$authEndpoint/getCode';
+
+  // Worker endpoints
+  static const String workerEndpoint = '$apiVersion/worker';
+  static const String workerLoginEndpoint = '$workerEndpoint/login';
+  static const String workerRegisterEndpoint = '$workerEndpoint/registration';
+  static const String workerGetCodeEndpoint = '$workerEndpoint/getCode';
+
+  // Supervisor endpoints
+  static const String supervisorEndpoint = '$apiVersion/supervisior';
+  static const String supervisorLoginEndpoint = '$supervisorEndpoint/login';
+  static const String supervisorRegisterEndpoint =
+      '$supervisorEndpoint/registration';
+  static const String supervisorGetCodeEndpoint = '$supervisorEndpoint/getCode';
+  static const String supervisorFilterEndpoint = '$supervisorEndpoint/filter';
+
+  // Admin endpoints
+  static const String adminEndpoint = '$apiVersion/admin';
+  static const String adminWorkersEndpoint = '$adminEndpoint/workers';
+  static const String adminWorkersNoStartEndpoint =
+      '$adminEndpoint/workers/no-start';
+  static const String adminSupervisorsEndpoint = '$adminEndpoint/supervisors';
+  static const String adminSupervisorsNoStartEndpoint =
+      '$adminEndpoint/supervisors/no-start';
 
   // User endpoints
   static const String userEndpoint = '$apiVersion/user';
@@ -29,6 +52,7 @@ class Environment {
   static const String getUserIssuesEndpoint = '$issueEndpoint/user';
   static const String getIssuesForMapEndpoint = '$issueEndpoint/user/map';
   static const String markIssueDoneEndpoint = '$issueEndpoint/done';
+  static const String getRecentIssuesEndpoint = '$issueEndpoint/recent';
 
   /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
   /// Get your free API key from: https://aistudio.google.com/app/apikey

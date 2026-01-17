@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import '../widgets/lottie_loader.dart';
 import '../services/auth_service.dart';
+import '../services/worker_service.dart';
 import 'home_screen.dart';
 import 'home_page_worker.dart';
 import 'info.dart';
@@ -72,18 +73,36 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isSendingOtp = true);
-    // Send OTP to actual email (without 'worker' keyword)
+
+    // Check if worker email and get actual email (without 'worker' keyword)
+    final isWorker = _isWorkerEmail(email);
     final actualEmail = _getActualEmail(email);
-    final response = await AuthService.getCode(email: actualEmail);
+
+    // Use appropriate service based on worker status
+    bool success = false;
+    String? message;
+
+    if (isWorker) {
+      final response = await WorkerService.getCode(
+        email: actualEmail,
+        roles: 'WORKER',
+      );
+      success = response.success;
+      message = response.message;
+    } else {
+      final response = await AuthService.getCode(email: actualEmail);
+      success = response.success;
+      message = response.message;
+    }
 
     if (!mounted) return;
     setState(() => _isSendingOtp = false);
 
-    if (response.success) {
+    if (success) {
       setState(() => _otpSent = true);
-      _showSnackBar(response.message ?? 'OTP sent to your email!');
+      _showSnackBar(message ?? 'OTP sent to your email!');
     } else {
-      _showSnackBar(response.message ?? 'Failed to send OTP');
+      _showSnackBar(message ?? 'Failed to send OTP');
     }
   }
 
@@ -104,17 +123,31 @@ class _LoginScreenState extends State<LoginScreen> {
     final actualEmail = _getActualEmail(email);
 
     if (_isLogin) {
-      // Login with AuthService using actual email (without 'worker')
-      final response = await AuthService.login(
-        email: actualEmail,
-        password: _passwordController.text,
-        isWorker: isWorker,
-      );
+      // Use appropriate service for login based on worker status
+      bool success = false;
+      String? errorMessage;
+
+      if (isWorker) {
+        final response = await WorkerService.login(
+          email: actualEmail,
+          password: _passwordController.text,
+        );
+        success = response.success;
+        errorMessage = response.message;
+      } else {
+        final response = await AuthService.login(
+          email: actualEmail,
+          password: _passwordController.text,
+          isWorker: false,
+        );
+        success = response.success;
+        errorMessage = response.message;
+      }
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      if (response.success) {
+      if (success) {
         // Navigate to appropriate home screen based on worker status
         Navigator.pushAndRemoveUntil(
           context,
@@ -125,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
           (route) => false,
         );
       } else {
-        _showSnackBar(response.message ?? 'Login failed. Please try again.');
+        _showSnackBar(errorMessage ?? 'Login failed. Please try again.');
       }
     } else {
       // Sign up - go to info screen with original email (keeps 'worker' for detection)

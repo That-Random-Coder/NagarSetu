@@ -16,6 +16,8 @@ class SecureStorageService {
   static const String _userNameKey = 'user_name';
   static const String _isLoggedInKey = 'is_logged_in';
   static const String _isWorkerKey = 'is_worker';
+  static const String _workerStartedKey = 'worker_started';
+  static const String _userRoleKey = 'user_role';
 
   /// Save authentication token
   static Future<void> saveToken(String token) async {
@@ -79,6 +81,27 @@ class SecureStorageService {
     return value == 'true';
   }
 
+  /// Set worker started/approved status
+  static Future<void> setWorkerStarted(bool value) async {
+    await _storage.write(key: _workerStartedKey, value: value.toString());
+  }
+
+  /// Check if worker account is started/approved by admin
+  static Future<bool> isWorkerStarted() async {
+    final value = await _storage.read(key: _workerStartedKey);
+    return value == 'true';
+  }
+
+  /// Save user role (CITIZEN, WORKER, SUPERVISOR, etc.)
+  static Future<void> saveUserRole(String role) async {
+    await _storage.write(key: _userRoleKey, value: role);
+  }
+
+  /// Get stored user role
+  static Future<String?> getUserRole() async {
+    return await _storage.read(key: _userRoleKey);
+  }
+
   /// Save all user data after successful login
   static Future<void> saveUserData({
     required String token,
@@ -111,6 +134,8 @@ class SecureStorageService {
       _storage.delete(key: _userNameKey),
       _storage.delete(key: _isLoggedInKey),
       _storage.delete(key: _isWorkerKey),
+      _storage.delete(key: _workerStartedKey),
+      _storage.delete(key: _userRoleKey),
     ]);
   }
 }

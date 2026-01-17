@@ -107,6 +107,7 @@ class LocalizationService extends ChangeNotifier {
       'garbage': 'Garbage',
       'drainage': 'Drainage',
       'streetlight': 'Streetlight',
+      'vehicle': 'Vehicle',
       'public_safety': 'Public Safety',
       'other': 'Other',
 

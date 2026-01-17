@@ -65,13 +65,18 @@ class UserService {
         success: false,
         message: 'No internet connection. Please check your network.',
       );
+    } on HandshakeException {
+      return UserServiceResponse(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
     } catch (e) {
       if (Environment.enableLogging) {
         print('GET USER ERROR: $e');
       }
       return UserServiceResponse(
         success: false,
-        message: 'An error occurred while fetching profile.',
+        message: 'Failed to fetch profile. Please check your connection.',
       );
     }
   }
@@ -138,13 +143,18 @@ class UserService {
         success: false,
         message: 'No internet connection. Please check your network.',
       );
+    } on HandshakeException {
+      return UserMatrixResponse(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
     } catch (e) {
       if (Environment.enableLogging) {
         print('GET USER MATRIX ERROR: $e');
       }
       return UserMatrixResponse(
         success: false,
-        message: 'An error occurred while fetching user matrix.',
+        message: 'Failed to fetch user matrix. Please check your connection.',
       );
     }
   }
@@ -184,6 +194,8 @@ class UserService {
         return [];
       }
     } on SocketException {
+      return [];
+    } on HandshakeException {
       return [];
     } catch (e) {
       if (Environment.enableLogging) print('GET LEADERBOARD ERROR: $e');

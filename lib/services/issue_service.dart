@@ -215,11 +215,26 @@ class IssueService {
         final error = _parseError(response.body);
         return ApiResult(success: false, message: error);
       }
+    } on SocketException catch (e) {
+      _log('Network error in createIssue: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in createIssue: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
     } catch (e) {
       if (Environment.enableLogging) {
         print('Create issue error: $e');
       }
-      return ApiResult(success: false, message: 'Failed to create issue: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to create issue. Please check your connection.',
+      );
     }
   }
 
@@ -242,19 +257,38 @@ class IssueService {
 
   /// Maps issue type labels to API enum values
   static String _mapIssueType(String type) {
-    final lookup = {
-      'road': 'ROAD',
-      'drainage': 'DRAINAGE',
-      'garbage': 'GARBAGE',
-      'electricity': 'ELECTRICITY',
-      'water': 'WATER',
-      'streetlight': 'STREETLIGHT',
-      'public safety': 'PUBLIC_SAFETY',
-      'vehicle': 'VEHICLE',
-      'other': 'OTHER',
-    };
+    // Ensure we send only the allowed set: ROAD, WATER, GARBAGE, VEHICLE, STREETLIGHT, OTHER
     final key = type.toLowerCase().trim();
-    return lookup[key] ?? 'OTHER';
+
+    if (key.contains('road')) return 'ROAD';
+    if (key.contains('water')) return 'WATER';
+    if (key.contains('garbage') ||
+        key.contains('waste') ||
+        key.contains('drain'))
+      return 'GARBAGE';
+    if (key.contains('vehicle') ||
+        key.contains('car') ||
+        key.contains('traffic'))
+      return 'VEHICLE';
+    if (key.contains('streetlight') ||
+        key.contains('light') ||
+        key.contains('street light'))
+      return 'STREETLIGHT';
+
+    // If it already matches one of the uppercase allowed values, return it
+    final upper = type.toUpperCase().trim();
+    const allowed = {
+      'ROAD',
+      'WATER',
+      'GARBAGE',
+      'VEHICLE',
+      'STREETLIGHT',
+      'OTHER',
+    };
+    if (allowed.contains(upper)) return upper;
+
+    // Fallback to OTHER
+    return 'OTHER';
   }
 
   /// Maps criticality labels to API enum values
@@ -320,11 +354,26 @@ class IssueService {
         final error = _parseError(response.body);
         return ApiResult(success: false, message: error);
       }
+    } on SocketException catch (e) {
+      _log('Network error in getUserIssues: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getUserIssues: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
     } catch (e) {
       if (Environment.enableLogging) {
         print('Get user issues error: $e');
       }
-      return ApiResult(success: false, message: 'Failed to fetch issues: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to fetch issues. Please check your connection.',
+      );
     }
   }
 
@@ -357,11 +406,26 @@ class IssueService {
         final error = _parseError(response.body);
         return ApiResult(success: false, message: error);
       }
+    } on SocketException catch (e) {
+      _log('Network error in getIssueById: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getIssueById: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
     } catch (e) {
       if (Environment.enableLogging) {
         print('Get issue by ID error: $e');
       }
-      return ApiResult(success: false, message: 'Failed to fetch issue: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to fetch issue. Please check your connection.',
+      );
     }
   }
 
@@ -370,9 +434,14 @@ class IssueService {
       final data = jsonDecode(body);
       return data['message']?.toString() ??
           data['error']?.toString() ??
-          'An error occurred';
+          data['detail']?.toString() ??
+          'Server error. Please try again.';
     } catch (e) {
-      return 'An error occurred';
+      // If body is not JSON, return it directly if not empty
+      if (body.isNotEmpty && body.length < 200) {
+        return body;
+      }
+      return 'Server error. Please try again.';
     }
   }
 
@@ -442,11 +511,23 @@ class IssueService {
       }
 
       return ApiResult(success: true, data: issues);
+    } on SocketException catch (e) {
+      _log('Network error in getIssuesForMap: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getIssuesForMap: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
     } catch (e) {
       _log('Get issues for map error: $e');
       return ApiResult(
         success: false,
-        message: 'Failed to fetch map issues: $e',
+        message: 'Failed to fetch map issues. Please check your connection.',
       );
     }
   }
@@ -590,13 +671,25 @@ class IssueService {
         final error = _parseError(response.body);
         return ApiResult(success: false, message: error);
       }
+    } on SocketException catch (e) {
+      _log('Network error in markIssueDone: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in markIssueDone: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
     } catch (e) {
       if (Environment.enableLogging) {
         print('Mark issue done error: $e');
       }
       return ApiResult(
         success: false,
-        message: 'Failed to mark issue as done: $e',
+        message: 'Failed to mark issue as done. Please check your connection.',
       );
     }
   }

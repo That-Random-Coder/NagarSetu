@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../services/auth_service.dart';
+import '../services/worker_service.dart';
 import '../widgets/lottie_loader.dart';
 import 'home_screen.dart';
 import 'home_page_worker.dart';
@@ -52,26 +53,63 @@ class _InfoScreenState extends State<InfoScreen> {
     final bool isWorker = widget.isWorkerEmail;
     // Get the actual email without 'worker' keyword
     final String actualEmail = widget.actualEmail;
-    // Determine role based on worker status
-    final String role = isWorker ? 'WORKER' : 'CITIZEN';
 
-    final response = await AuthService.register(
-      email: actualEmail,
-      password: widget.password,
-      code: widget.otpCode,
-      fullName: _nameController.text.trim(),
-      phoneNumber: _phoneController.text.trim(),
-      age: int.tryParse(_ageController.text.trim()),
-      gender: _selectedGender,
-      location: _locationController.text.trim(),
-      role: role,
-      isWorker: isWorker,
-    );
+    // Debug logging
+    print('=== REGISTRATION DEBUG ===');
+    print('Original Email: ${widget.email}');
+    print('Is Worker: $isWorker');
+    print('Actual Email (sent to API): $actualEmail');
+    print('Using Service: ${isWorker ? "WorkerService" : "AuthService"}');
+
+    bool success = false;
+    String? errorMessage;
+
+    if (isWorker) {
+      // Use WorkerService for worker registration
+      print('Calling WorkerService.register()...');
+      final response = await WorkerService.register(
+        email: actualEmail,
+        password: widget.password,
+        code: widget.otpCode,
+        fullName: _nameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        age: int.tryParse(_ageController.text.trim()),
+        gender: _selectedGender,
+        location: _locationController.text.trim(),
+      );
+      success = response.success;
+      errorMessage = response.message;
+      print(
+        'WorkerService.register() result: success=$success, message=$errorMessage',
+      );
+    } else {
+      // Use AuthService for citizen registration
+      print('Calling AuthService.register()...');
+      final response = await AuthService.register(
+        email: actualEmail,
+        password: widget.password,
+        code: widget.otpCode,
+        fullName: _nameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        age: int.tryParse(_ageController.text.trim()),
+        gender: _selectedGender,
+        location: _locationController.text.trim(),
+        role: 'CITIZEN',
+        isWorker: false,
+      );
+      success = response.success;
+      errorMessage = response.message;
+      print(
+        'AuthService.register() result: success=$success, message=$errorMessage',
+      );
+    }
+
+    print('=== END REGISTRATION DEBUG ===');
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (response.success) {
+    if (success) {
       _showSnackBar('Registration successful!');
       // Navigate to appropriate home screen based on worker status
       Navigator.pushAndRemoveUntil(
@@ -83,9 +121,7 @@ class _InfoScreenState extends State<InfoScreen> {
         (route) => false,
       );
     } else {
-      _showSnackBar(
-        response.message ?? 'Registration failed. Please try again.',
-      );
+      _showSnackBar(errorMessage ?? 'Registration failed. Please try again.');
     }
   }
 

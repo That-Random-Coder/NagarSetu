@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import '../services/secure_storage_service.dart';
+import '../services/worker_service.dart';
 import 'discover.dart';
 import 'notifications.dart'; // Import the notifications screen
 import 'update_work.dart';
@@ -685,7 +685,7 @@ class _WorkerProfileTabState extends State<_WorkerProfileTab> {
 
     setState(() => _isLoggingOut = true);
 
-    await AuthService.logout();
+    await WorkerService.logout();
 
     if (!mounted) return;
 
