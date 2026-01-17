@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'my_issues_screen.dart';
+import '../services/issue_service.dart';
+import '../models/issue_model.dart';
+import '../widgets/lottie_loader.dart';
+import 'issue_detail_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -13,15 +16,22 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
 
+  List<IssueModel> _issues = [];
+  bool _isLoading = true;
+  String? _error;
+
+  LatLng _currentCenter = const LatLng(28.6120, 77.2050);
+  double _currentZoom = 13.5;
+
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Resolved':
+    switch (status.toLowerCase()) {
+      case 'resolved':
         return Colors.green;
-      case 'In Progress':
+      case 'in progress':
         return Colors.orange;
-      case 'Team Assigned':
+      case 'team assigned':
         return Colors.blue;
-      case 'Acknowledged':
+      case 'acknowledged':
         return Colors.blue;
       default:
         return Colors.red;
@@ -29,33 +39,19 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Color _getCircleColor(String status) {
-    switch (status) {
-      case 'Resolved':
-        return Colors.green.withValues(alpha: 0.25);
-      case 'In Progress':
-        return Colors.orange.withValues(alpha: 0.25);
-      case 'Team Assigned':
-        return Colors.blue.withValues(alpha: 0.25);
-      case 'Acknowledged':
-        return Colors.blue.withValues(alpha: 0.25);
-      default:
-        return Colors.red.withValues(alpha: 0.25);
-    }
+    final c = _getStatusColor(status);
+    return c.withOpacity(0.25);
   }
 
   Color _getBorderColor(String status) {
-    switch (status) {
-      case 'Resolved':
-        return Colors.green.withValues(alpha: 0.7);
-      case 'In Progress':
-        return Colors.orange.withValues(alpha: 0.7);
-      case 'Team Assigned':
-        return Colors.blue.withValues(alpha: 0.7);
-      case 'Acknowledged':
-        return Colors.blue.withValues(alpha: 0.7);
-      default:
-        return Colors.red.withValues(alpha: 0.7);
-    }
+    final c = _getStatusColor(status);
+    return c.withOpacity(0.7);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchIssues();
   }
 
   @override
@@ -64,9 +60,27 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
+  Future<void> _fetchIssues() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final result = await IssueService.getUserIssues();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (result.success && result.data != null) {
+          _issues = result.data!;
+        } else {
+          _error = result.message ?? 'Failed to load issues';
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final issues = MyIssuesScreen.dummyIssues;
     final LatLng centerLocation = LatLng(28.6120, 77.2050);
 
     return Scaffold(
@@ -79,54 +93,64 @@ class _MapScreenState extends State<MapScreen> {
               initialZoom: 13.5,
               minZoom: 10,
               maxZoom: 18,
+              onPositionChanged: (mapPosition, _) {
+                if (mapPosition.center != null && mapPosition.zoom != null) {
+                  setState(() {
+                    _currentCenter = mapPosition.center!;
+                    _currentZoom = mapPosition.zoom!;
+                  });
+                }
+              },
             ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.nagarsetu.app',
               ),
-              CircleLayer(
-                circles: issues.map((issue) {
-                  return CircleMarker(
-                    point: LatLng(issue['latitude'], issue['longitude']),
-                    radius: 80,
-                    useRadiusInMeter: true,
-                    color: _getCircleColor(issue['status']),
-                    borderColor: _getBorderColor(issue['status']),
-                    borderStrokeWidth: 2,
-                  );
-                }).toList(),
-              ),
-              MarkerLayer(
-                markers: issues.map((issue) {
-                  return Marker(
-                    point: LatLng(issue['latitude'], issue['longitude']),
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () => _showIssueDetails(issue),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(issue['status']),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          _getIssueIcon(issue['type']),
-                          color: Colors.white,
-                          size: 20,
+              if (!_isLoading)
+                CircleLayer(
+                  circles: _issues.map((issue) {
+                    return CircleMarker(
+                      point: LatLng(issue.latitude, issue.longitude),
+                      radius: 80,
+                      useRadiusInMeter: true,
+                      color: _getCircleColor(issue.status),
+                      borderColor: _getBorderColor(issue.status),
+                      borderStrokeWidth: 2,
+                    );
+                  }).toList(),
+                ),
+              if (!_isLoading)
+                MarkerLayer(
+                  markers: _issues.map((issue) {
+                    return Marker(
+                      point: LatLng(issue.latitude, issue.longitude),
+                      width: 40,
+                      height: 40,
+                      child: GestureDetector(
+                        onTap: () => _showIssueDetails(issue),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(issue.status),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _getIssueIcon(issue.type),
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                    );
+                  }).toList(),
+                ),
             ],
           ),
           SafeArea(
@@ -145,18 +169,16 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 _buildMapButton(
                   icon: Icons.add,
-                  onTap: () => _mapController.move(
-                    _mapController.camera.center,
-                    _mapController.camera.zoom + 1,
-                  ),
+                  onTap: () {
+                    _mapController.move(_currentCenter, _currentZoom + 1);
+                  },
                 ),
                 const SizedBox(height: 8),
                 _buildMapButton(
                   icon: Icons.remove,
-                  onTap: () => _mapController.move(
-                    _mapController.camera.center,
-                    _mapController.camera.zoom - 1,
-                  ),
+                  onTap: () {
+                    _mapController.move(_currentCenter, _currentZoom - 1);
+                  },
                 ),
                 const SizedBox(height: 8),
                 _buildMapButton(
@@ -166,6 +188,26 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
+          if (_isLoading)
+            const Center(
+              child: LottieLoader(size: 120, message: 'Loading issues...'),
+            ),
+          if (_error != null)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(_error!, style: TextStyle(color: Colors.grey[600])),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _fetchIssues,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -217,7 +259,7 @@ class _MapScreenState extends State<MapScreen> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${MyIssuesScreen.dummyIssues.length} Issues',
+              '${_issues.length} Issues',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -265,7 +307,7 @@ class _MapScreenState extends State<MapScreen> {
           width: 14,
           height: 14,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.3),
+            color: color.withOpacity(0.3),
             shape: BoxShape.circle,
             border: Border.all(color: color, width: 2),
           ),
@@ -317,12 +359,14 @@ class _MapScreenState extends State<MapScreen> {
         return Icons.water_drop;
       case 'Waste':
         return Icons.delete_outline;
+      case 'telecom':
+        return Icons.cell_tower;
       default:
         return Icons.report_problem;
     }
   }
 
-  void _showIssueDetails(Map<String, dynamic> issue) {
+  void _showIssueDetails(IssueModel issue) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -343,14 +387,12 @@ class _MapScreenState extends State<MapScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(
-                      issue['status'],
-                    ).withValues(alpha: 0.15),
+                    color: _getStatusColor(issue.status).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    _getIssueIcon(issue['type']),
-                    color: _getStatusColor(issue['status']),
+                    _getIssueIcon(issue.type),
+                    color: _getStatusColor(issue.status),
                     size: 24,
                   ),
                 ),
@@ -360,7 +402,7 @@ class _MapScreenState extends State<MapScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        issue['title'],
+                        issue.title,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -369,7 +411,7 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        issue['location'],
+                        issue.location,
                         style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                       ),
                     ],
@@ -381,7 +423,7 @@ class _MapScreenState extends State<MapScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: _getStatusColor(issue['status']).withValues(alpha: 0.1),
+                color: _getStatusColor(issue.status).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -391,17 +433,17 @@ class _MapScreenState extends State<MapScreen> {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _getStatusColor(issue['status']),
+                      color: _getStatusColor(issue.status),
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    issue['status'],
+                    issue.status,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: _getStatusColor(issue['status']),
+                      color: _getStatusColor(issue.status),
                     ),
                   ),
                 ],
@@ -409,7 +451,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              issue['description'],
+              issue.description,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -443,6 +485,13 @@ class _MapScreenState extends State<MapScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              IssueDetailScreen(issueId: issue.id),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[600],

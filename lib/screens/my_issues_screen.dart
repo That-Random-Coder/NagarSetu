@@ -1,151 +1,83 @@
 import 'package:flutter/material.dart';
 import 'issue_detail_screen.dart';
+import '../services/issue_service.dart';
+import '../models/issue_model.dart';
+import '../widgets/lottie_loader.dart';
 
-class MyIssuesScreen extends StatelessWidget {
+class MyIssuesScreen extends StatefulWidget {
   const MyIssuesScreen({super.key});
 
-  static final List<Map<String, dynamic>> dummyIssues = [
-    {
-      'id': 'NS2026-001234',
-      'title': 'Pothole on Main Street',
-      'type': 'Road',
-      'status': 'Resolved',
-      'statusColor': Colors.green,
-      'reportedDate': 'January 10, 2026',
-      'location': 'Main Street, Sector 5',
-      'description':
-          'Large pothole causing traffic issues and risk to vehicles.',
-      'latitude': 28.6139,
-      'longitude': 77.2090,
-      'timeline': [
-        {
-          'status': 'Resolved',
-          'date': '03/18/2024',
-          'description': 'Issue has been fixed',
-        },
-        {
-          'status': 'In Progress',
-          'date': '03/16/2024',
-          'description': 'Assigned to team on 03/16/2024',
-        },
-        {
-          'status': 'Team Assigned',
-          'date': '03/17/2024',
-          'description': 'Team dispatched on 03/17/2024',
-        },
-        {
-          'status': 'Acknowledged',
-          'date': '03/15/2024',
-          'description': 'Reported on 03/15/2024',
-        },
-      ],
-    },
-    {
-      'id': 'NS2026-001235',
-      'title': 'Street Light Not Working',
-      'type': 'Electricity',
-      'status': 'In Progress',
-      'statusColor': Colors.orange,
-      'reportedDate': 'January 12, 2026',
-      'location': 'Park Avenue, Block C',
-      'description': 'Street light pole #45 has been out for 3 days.',
-      'latitude': 28.6200,
-      'longitude': 77.2150,
-      'timeline': [
-        {
-          'status': 'In Progress',
-          'date': '01/14/2026',
-          'description': 'Assigned to team on 01/14/2026',
-        },
-        {
-          'status': 'Team Assigned',
-          'date': '01/13/2026',
-          'description': 'Team dispatched on 01/13/2026',
-        },
-        {
-          'status': 'Acknowledged',
-          'date': '01/12/2026',
-          'description': 'Reported on 01/12/2026',
-        },
-      ],
-    },
-    {
-      'id': 'NS2026-001236',
-      'title': 'Water Leakage',
-      'type': 'Water',
-      'status': 'Team Assigned',
-      'statusColor': Colors.blue,
-      'reportedDate': 'January 15, 2026',
-      'location': 'Gandhi Road, Near Temple',
-      'description': 'Water pipe burst causing water wastage.',
-      'latitude': 28.6050,
-      'longitude': 77.2000,
-      'timeline': [
-        {
-          'status': 'Team Assigned',
-          'date': '01/16/2026',
-          'description': 'Team dispatched on 01/16/2026',
-        },
-        {
-          'status': 'Acknowledged',
-          'date': '01/15/2026',
-          'description': 'Reported on 01/15/2026',
-        },
-      ],
-    },
-    {
-      'id': 'NS2026-001237',
-      'title': 'Garbage Not Collected',
-      'type': 'Waste',
-      'status': 'Acknowledged',
-      'statusColor': Colors.grey,
-      'reportedDate': 'January 16, 2026',
-      'location': 'Nehru Colony, House 23',
-      'description': 'Garbage has not been collected for 5 days.',
-      'latitude': 28.6100,
-      'longitude': 77.1950,
-      'timeline': [
-        {
-          'status': 'Acknowledged',
-          'date': '01/16/2026',
-          'description': 'Reported on 01/16/2026',
-        },
-      ],
-    },
-    {
-      'id': 'NS2026-001238',
-      'title': 'Broken Drainage Cover',
-      'type': 'Road',
-      'status': 'Pending',
-      'statusColor': Colors.red,
-      'reportedDate': 'January 17, 2026',
-      'location': 'MG Road, Near Bus Stop',
-      'description':
-          'Drainage cover is broken and causing safety hazard for pedestrians.',
-      'latitude': 28.6180,
-      'longitude': 77.1980,
-      'timeline': [
-        {
-          'status': 'Pending',
-          'date': '01/17/2026',
-          'description': 'Waiting for acknowledgement',
-        },
-      ],
-    },
-  ];
+  @override
+  State<MyIssuesScreen> createState() => _MyIssuesScreenState();
+}
+
+class _MyIssuesScreenState extends State<MyIssuesScreen> {
+  List<IssueModel> _issues = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchIssues();
+  }
+
+  Future<void> _fetchIssues() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final result = await IssueService.getUserIssues();
+
+    // Debug: Print parsed issues
+    print(
+      'Fetched ${result.data?.length ?? 0} issues, success: ${result.success}',
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (result.success) {
+          _issues = result.data ?? [];
+        } else {
+          _error = result.message;
+        }
+      });
+    }
+  }
 
   IconData _getIssueIcon(String type) {
-    switch (type) {
-      case 'Road':
+    switch (type.toLowerCase()) {
+      case 'road':
         return Icons.add_road;
-      case 'Electricity':
+      case 'electricity':
         return Icons.electrical_services;
-      case 'Water':
+      case 'water':
         return Icons.water_drop;
-      case 'Waste':
+      case 'waste':
         return Icons.delete_outline;
+      case 'telecom':
+        return Icons.cell_tower;
       default:
         return Icons.report_problem;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolved':
+        return Colors.green;
+      case 'in progress':
+        return Colors.orange;
+      case 'team assigned':
+        return Colors.blue;
+      case 'acknowledged':
+        return Colors.grey;
+      case 'pending':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -169,20 +101,84 @@ class MyIssuesScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.grey[800]),
+            onPressed: _fetchIssues,
+          ),
+        ],
       ),
-      body: ListView.builder(
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: LottieLoader(size: 120, message: 'Loading issues...'),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _fetchIssues, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    if (_issues.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No issues reported yet',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Report an issue to see it here',
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchIssues,
+      child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: dummyIssues.length,
+        itemCount: _issues.length,
         itemBuilder: (context, index) {
-          final issue = dummyIssues[index];
+          final issue = _issues[index];
+          final statusColor = _getStatusColor(issue.status);
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => IssueDetailScreen(issue: issue),
+                  builder: (context) => IssueDetailScreen(issueId: issue.id),
                 ),
-              );
+              ).then((_) => _fetchIssues());
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 16),
@@ -208,7 +204,7 @@ class MyIssuesScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        _getIssueIcon(issue['type']),
+                        _getIssueIcon(issue.type),
                         color: Colors.blue[600],
                         size: 24,
                       ),
@@ -219,7 +215,7 @@ class MyIssuesScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            issue['title'],
+                            issue.title,
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -228,11 +224,13 @@ class MyIssuesScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            issue['location'],
+                            issue.location,
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey[500],
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 6),
                           Row(
@@ -243,22 +241,21 @@ class MyIssuesScreen extends StatelessWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: (issue['statusColor'] as Color)
-                                      .withValues(alpha: 0.15),
+                                  color: statusColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  issue['status'],
+                                  issue.status,
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: issue['statusColor'],
+                                    color: statusColor,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                issue['reportedDate'],
+                                issue.formattedDate,
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey[400],

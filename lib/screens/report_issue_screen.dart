@@ -9,6 +9,8 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'dart:io';
 import '../widgets/lottie_loader.dart';
 import '../services/ai_service.dart';
+import '../services/issue_service.dart';
+import 'package:geocoding/geocoding.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -23,6 +25,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final MapController _mapController = MapController();
+  bool _isSubmitting = false;
+  String _locationAddress = '';
   LatLng _currentLocation = const LatLng(28.6139, 77.2090);
   LatLng _selectedLocation = const LatLng(28.6139, 77.2090);
   bool _isLoadingLocation = true;
@@ -60,6 +64,17 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     _titleController.dispose();
     _mapController.dispose();
     super.dispose();
+  }
+
+  void _resetForm() {
+    setState(() {
+      _descriptionController.clear();
+      _titleController.clear();
+      _selectedImage = null;
+      _selectedIssueType = 0;
+      _selectedCriticality = 1;
+      _autoGenerateTitle = true;
+    });
   }
 
   Future<void> _initSpeech() async {
@@ -171,6 +186,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           _isLoadingLocation = false;
         });
         _mapController.move(_currentLocation, 15.0);
+        await _getAddressFromCoordinates(_currentLocation);
       } catch (e) {
         setState(() {
           _isLoadingLocation = false;
@@ -185,6 +201,32 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         'Location Permission Required',
         'Please enable location permission to access your location.',
       );
+    }
+  }
+
+  Future<void> _getAddressFromCoordinates(LatLng location) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        location.latitude,
+        location.longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final address = [
+          place.street,
+          place.subLocality,
+          place.locality,
+          place.administrativeArea,
+        ].where((s) => s != null && s.isNotEmpty).join(', ');
+        setState(() {
+          _locationAddress = address.isNotEmpty ? address : 'Unknown location';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _locationAddress =
+            'Lat: ${location.latitude.toStringAsFixed(4)}, Lng: ${location.longitude.toStringAsFixed(4)}';
+      });
     }
   }
 
@@ -320,6 +362,16 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   }
 
   void _submitReport() {
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a photo of the issue'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     if (_descriptionController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -344,16 +396,55 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => SuccessDialog(
-        title: 'Issue Reported!',
-        message:
-            'Your issue has been reported successfully. You will be notified once it is acknowledged.',
-        onDismiss: () => Navigator.pop(context),
-      ),
+    _submitToApi();
+  }
+
+  Future<void> _submitToApi() async {
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final result = await IssueService.createIssue(
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      type: issueTypes[_selectedIssueType]['label'],
+      criticality: criticalityLevels[_selectedCriticality],
+      location: _locationAddress.isNotEmpty
+          ? _locationAddress
+          : 'Lat: ${_selectedLocation.latitude}, Lng: ${_selectedLocation.longitude}',
+      latitude: _selectedLocation.latitude,
+      longitude: _selectedLocation.longitude,
+      image: _selectedImage!,
     );
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    if (!mounted) return;
+
+    if (result.success) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => SuccessDialog(
+          title: 'Issue Reported!',
+          message:
+              'Your issue has been reported successfully. You will be notified once it is acknowledged.',
+          onDismiss: () {
+            Navigator.pop(context); // Close only the dialog
+            _resetForm(); // Reset form to allow new submission
+          },
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message ?? 'Failed to report issue'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -933,7 +1024,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                           height: 40,
                           child: Icon(
                             Icons.location_pin,
-                            color: Colors.red[600],
+                            color: Colors.blue[600],
                             size: 40,
                           ),
                         ),
@@ -967,7 +1058,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _submitReport,
+        onPressed: _isSubmitting ? null : _submitReport,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue[600],
           foregroundColor: Colors.white,
@@ -977,10 +1068,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           ),
           elevation: 0,
         ),
-        child: const Text(
-          'Submit Report',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        child: _isSubmitting
+            ? const ButtonLoader(size: 24)
+            : const Text(
+                'Submit Report',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
       ),
     );
   }

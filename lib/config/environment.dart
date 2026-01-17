@@ -21,6 +21,11 @@ class Environment {
   static const String userEndpoint = '$apiVersion/user';
   static const String getUserEndpoint = '$userEndpoint/get';
 
+  // Issue endpoints
+  static const String issueEndpoint = '$apiVersion/issue';
+  static const String createIssueEndpoint = '$issueEndpoint/create';
+  static const String getUserIssuesEndpoint = '$issueEndpoint/user';
+
   /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
   /// Get your free API key from: https://aistudio.google.com/app/apikey
   // static const String geminiApiKey = 'AIzaSyBuKMAWjJapcvCVDDZdfvHC8p3SqJXHnHk';
