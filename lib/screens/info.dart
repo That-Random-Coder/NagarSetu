@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'home.dart';
+import '../services/auth_service.dart';
+import 'home_screen.dart';
 
 class InfoScreen extends StatefulWidget {
-  const InfoScreen({super.key});
+  final String email;
+  final String password;
+  final String otpCode;
+
+  const InfoScreen({
+    super.key,
+    required this.email,
+    required this.password,
+    required this.otpCode,
+  });
 
   @override
   State<InfoScreen> createState() => _InfoScreenState();
@@ -11,7 +21,7 @@ class InfoScreen extends StatefulWidget {
 
 class _InfoScreenState extends State<InfoScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _ageController = TextEditingController();
@@ -21,25 +31,49 @@ class _InfoScreenState extends State<InfoScreen> {
 
   final List<String> _genders = ['Male', 'Female', 'Other'];
 
-  void _submitInfo() {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+  Future<void> _submitInfo() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      // Simulate API call to save user profile
-      Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          
-          // CHANGED: Navigate to Home Page and remove EVERYTHING from back stack
-          // (Login, Sign Up, Info Screen are all removed)
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
-            (route) => false,
-          );
-        }
-      });
+    setState(() => _isLoading = true);
+
+    final response = await AuthService.register(
+      email: widget.email,
+      password: widget.password,
+      code: widget.otpCode,
+      fullName: _nameController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      age: int.tryParse(_ageController.text.trim()),
+      gender: _selectedGender,
+      location: _locationController.text.trim(),
+      role: 'CITIZEN',
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (response.success) {
+      _showSnackBar('Registration successful!');
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    } else {
+      _showSnackBar(
+        response.message ?? 'Registration failed. Please try again.',
+      );
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -61,7 +95,11 @@ class _InfoScreenState extends State<InfoScreen> {
                 child: Center(
                   child: Lottie.network(
                     'https://assets9.lottiefiles.com/packages/lf20_M9p23l.json',
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_circle, size: 100, color: Color(0xFF1976D2)),
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.account_circle,
+                      size: 100,
+                      color: Color(0xFF1976D2),
+                    ),
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -83,7 +121,11 @@ class _InfoScreenState extends State<InfoScreen> {
                     topRight: Radius.circular(30),
                   ),
                   boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 30, offset: Offset(0, -10)),
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 30,
+                      offset: Offset(0, -10),
+                    ),
                   ],
                 ),
                 child: Padding(
@@ -97,29 +139,74 @@ class _InfoScreenState extends State<InfoScreen> {
                         const Text(
                           "Tell us about yourself",
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1976D2)),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1976D2),
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        Text("Please complete your profile to continue", textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                        Text(
+                          "Please complete your profile to continue",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                         const SizedBox(height: 32),
 
-                        _buildTextField(controller: _nameController, label: "Full Name", icon: Icons.person_outline, validator: (v) => v!.isEmpty ? "Name is required" : null),
+                        _buildTextField(
+                          controller: _nameController,
+                          label: "Full Name",
+                          icon: Icons.person_outline,
+                          validator: (v) =>
+                              v!.isEmpty ? "Name is required" : null,
+                        ),
                         const SizedBox(height: 20),
 
-                        _buildTextField(controller: _phoneController, label: "Phone Number", icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone, validator: (v) => v!.length < 10 ? "Invalid phone number" : null),
+                        _buildTextField(
+                          controller: _phoneController,
+                          label: "Phone Number",
+                          icon: Icons.phone_android_outlined,
+                          keyboardType: TextInputType.phone,
+                          validator: (v) =>
+                              v!.length < 10 ? "Invalid phone number" : null,
+                        ),
                         const SizedBox(height: 20),
 
                         Row(
                           children: [
-                            Expanded(flex: 2, child: _buildTextField(controller: _ageController, label: "Age", icon: Icons.calendar_today_outlined, keyboardType: TextInputType.number, validator: (v) => v!.isEmpty ? "Required" : null)),
+                            Expanded(
+                              flex: 2,
+                              child: _buildTextField(
+                                controller: _ageController,
+                                label: "Age",
+                                icon: Icons.calendar_today_outlined,
+                                keyboardType: TextInputType.number,
+                                validator: (v) =>
+                                    v!.isEmpty ? "Required" : null,
+                              ),
+                            ),
                             const SizedBox(width: 16),
                             Expanded(
                               flex: 3,
                               child: DropdownButtonFormField<String>(
                                 value: _selectedGender,
-                                decoration: _inputDecoration("Gender", Icons.wc_outlined),
-                                items: _genders.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                                onChanged: (v) => setState(() => _selectedGender = v),
+                                decoration: _inputDecoration(
+                                  "Gender",
+                                  Icons.wc_outlined,
+                                ),
+                                items: _genders
+                                    .map(
+                                      (g) => DropdownMenuItem(
+                                        value: g,
+                                        child: Text(g),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) =>
+                                    setState(() => _selectedGender = v),
                                 validator: (v) => v == null ? "Required" : null,
                               ),
                             ),
@@ -127,7 +214,13 @@ class _InfoScreenState extends State<InfoScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        _buildTextField(controller: _locationController, label: "City / Location", icon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? "Location is required" : null),
+                        _buildTextField(
+                          controller: _locationController,
+                          label: "City / Location",
+                          icon: Icons.location_on_outlined,
+                          validator: (v) =>
+                              v!.isEmpty ? "Location is required" : null,
+                        ),
                         const SizedBox(height: 40),
 
                         SizedBox(
@@ -138,14 +231,31 @@ class _InfoScreenState extends State<InfoScreen> {
                               backgroundColor: const Color(0xFF1976D2),
                               foregroundColor: Colors.white,
                               elevation: 4,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                             child: _isLoading
-                                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                                : const Text("Done", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text(
+                                    "Done",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
-                        SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+                        SizedBox(
+                          height: MediaQuery.of(context).viewInsets.bottom,
+                        ),
                       ],
                     ),
                   ),
@@ -158,7 +268,13 @@ class _InfoScreenState extends State<InfoScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, TextInputType keyboardType = TextInputType.text, String? Function(String?)? validator}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,

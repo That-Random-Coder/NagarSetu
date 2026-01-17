@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
-import 'home.dart';
+import '../services/auth_service.dart';
+import 'home_screen.dart';
 import 'info.dart';
 import 'reset.dart';
 
@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   bool _otpSent = false;
+  bool _isSendingOtp = false;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -51,44 +52,85 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _submitForm() async { // Make this async
-    FocusScope.of(context).unfocus();
-
-    if (!_isLogin && !_otpSent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please verify your email by sending an OTP first.')),
-      );
+  Future<void> _sendOtp() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      _showSnackBar('Please enter a valid email first');
       return;
     }
 
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    setState(() => _isSendingOtp = true);
+    final response = await AuthService.getCode(email: email);
 
-      // --- SAVE LOGIN STATE ---
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      // ------------------------
+    if (!mounted) return;
+    setState(() => _isSendingOtp = false);
 
-      // Simulate Network Delay
-      Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
-        if (mounted) {
-          setState(() => _isLoading = false);
-
-          if (_isLogin) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const HomePage()),
-              (route) => false,
-            );
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const InfoScreen()),
-            );
-          }
-        }
-      });
+    if (response.success) {
+      setState(() => _otpSent = true);
+      _showSnackBar(response.message ?? 'OTP sent to your email!');
+    } else {
+      _showSnackBar(response.message ?? 'Failed to send OTP');
     }
+  }
+
+  Future<void> _submitForm() async {
+    FocusScope.of(context).unfocus();
+
+    if (!_isLogin && !_otpSent) {
+      _showSnackBar('Please verify your email by sending an OTP first.');
+      return;
+    }
+
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    if (_isLogin) {
+      // Login with AuthService
+      final response = await AuthService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (response.success) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      } else {
+        _showSnackBar(response.message ?? 'Login failed. Please try again.');
+      }
+    } else {
+      // Sign up - go to info screen with email, password, and OTP
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => InfoScreen(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            otpCode: _otpController.text.trim(),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -115,15 +157,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         return Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.location_city_rounded, size: 80, color: Color(0xFF1976D2)),
+                            const Icon(
+                              Icons.location_city_rounded,
+                              size: 80,
+                              color: Color(0xFF1976D2),
+                            ),
                             const SizedBox(height: 16),
                             Text(
-                              "NagarSetu", 
+                              "NagarSetu",
                               style: GoogleFonts.poppins(
-                                fontSize: 24, 
-                                fontWeight: FontWeight.bold, 
-                                color: const Color(0xFF1976D2)
-                              )
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1976D2),
+                              ),
                             ),
                           ],
                         );
@@ -141,9 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SingleChildScrollView(
               child: RepaintBoundary(
                 child: Container(
-                  constraints: BoxConstraints(
-                    minHeight: size.height * 0.6,
-                  ),
+                  constraints: BoxConstraints(minHeight: size.height * 0.6),
                   width: double.infinity,
                   decoration: const BoxDecoration(
                     color: Colors.white,
@@ -179,7 +223,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Stack(
                               children: [
                                 AnimatedAlign(
-                                  alignment: _isLogin ? Alignment.centerLeft : Alignment.centerRight,
+                                  alignment: _isLogin
+                                      ? Alignment.centerLeft
+                                      : Alignment.centerRight,
                                   duration: kAnimDuration,
                                   curve: kAnimCurve,
                                   child: FractionallySizedBox(
@@ -190,7 +236,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                         borderRadius: BorderRadius.circular(25),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.08),
+                                            color: Colors.black.withOpacity(
+                                              0.08,
+                                            ),
                                             blurRadius: 4,
                                             offset: const Offset(0, 2),
                                           ),
@@ -201,8 +249,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 Row(
                                   children: [
-                                    _buildToggleText("Log In", _isLogin, () => _toggleMode(true)),
-                                    _buildToggleText("Sign Up", !_isLogin, () => _toggleMode(false)),
+                                    _buildToggleText(
+                                      "Log In",
+                                      _isLogin,
+                                      () => _toggleMode(true),
+                                    ),
+                                    _buildToggleText(
+                                      "Sign Up",
+                                      !_isLogin,
+                                      () => _toggleMode(false),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -284,24 +340,35 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 104,
                         height: 56,
                         child: Container(
-                           margin: const EdgeInsets.only(top: 2),
-                           child: ElevatedButton(
-                            onPressed: () {
-                              if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
-                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid email first')));
-                                 return;
-                              }
-                              setState(() => _otpSent = true);
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent!')));
-                            },
+                          margin: const EdgeInsets.only(top: 2),
+                          child: ElevatedButton(
+                            onPressed: _isSendingOtp ? null : _sendOtp,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFE3F2FD),
                               foregroundColor: const Color(0xFF1976D2),
                               elevation: 0,
                               padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                            child: const Text("Send OTP", maxLines: 1, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            child: _isSendingOtp
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF1976D2),
+                                    ),
+                                  )
+                                : Text(
+                                    _otpSent ? "Resend" : "Send OTP",
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -319,17 +386,20 @@ class _LoginScreenState extends State<LoginScreen> {
             child: (_isLogin || !_otpSent)
                 ? const SizedBox.shrink()
                 : Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildTextField(
-                       controller: _otpController,
-                       label: "Enter 5-Digit OTP",
-                       icon: Icons.confirmation_number_outlined,
-                       keyboardType: TextInputType.number,
-                       validator: (value) => (value == null || value.length < 4) ? 'Invalid OTP' : null,
-                     ),
-                  ],
-                ),
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        controller: _otpController,
+                        label: "Enter 5-Digit OTP",
+                        icon: Icons.confirmation_number_outlined,
+                        keyboardType: TextInputType.number,
+                        validator: (value) =>
+                            (value == null || value.length < 4)
+                            ? 'Invalid OTP'
+                            : null,
+                      ),
+                    ],
+                  ),
           ),
 
           const SizedBox(height: 20),
@@ -340,8 +410,10 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: Icons.lock_outline,
             isObscure: _obscurePassword,
             hasSuffix: true,
-            onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
-            validator: (value) => (value == null || value.length < 6) ? 'Min 6 characters' : null,
+            onSuffixTap: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
+            validator: (value) =>
+                (value == null || value.length < 6) ? 'Min 6 characters' : null,
           ),
 
           AnimatedSize(
@@ -365,7 +437,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const ResetPasswordScreen()),
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ResetPasswordScreen(),
+                              ),
                             );
                           },
                           style: TextButton.styleFrom(
@@ -374,7 +449,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             foregroundColor: const Color(0xFF1976D2),
                           ),
-                          child: const Text("Forgot Password?", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            "Forgot Password?",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -395,16 +476,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 foregroundColor: Colors.white,
                 elevation: 4,
                 shadowColor: const Color(0xFF1976D2).withOpacity(0.4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               child: _isLoading
-                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
                   : AnimatedSwitcher(
                       duration: kAnimDuration,
                       child: Text(
                         _isLogin ? "Login" : "Sign Up",
                         key: ValueKey<String>(_isLogin ? "Login" : "Sign Up"),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
             ),
@@ -437,7 +531,13 @@ class _LoginScreenState extends State<LoginScreen> {
         prefixIcon: Icon(icon, color: const Color(0xFF1976D2), size: 22),
         suffixIcon: hasSuffix
             ? IconButton(
-                icon: Icon(isObscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: Colors.grey[400], size: 22),
+                icon: Icon(
+                  isObscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: Colors.grey[400],
+                  size: 22,
+                ),
                 onPressed: onSuffixTap,
               )
             : null,

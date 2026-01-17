@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
+import '../services/auth_service.dart';
+import '../services/app_state_service.dart';
+import 'discover.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -30,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen>
           // Play second time
           _controller.forward(from: 0);
         } else {
-          _goToHome();
+          _navigateToNextScreen();
         }
       }
     });
@@ -42,14 +45,36 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  void _goToHome() {
+  Future<void> _navigateToNextScreen() async {
     if (_navigated) return;
     _navigated = true;
+
+    // Check if user is logged in and if this is first launch
+    final isLoggedIn = await AuthService.isLoggedIn();
+    final isFirstLaunch = await AppStateService.isFirstLaunch();
+
+    if (!mounted) return;
+
+    Widget nextScreen;
+
+    if (isLoggedIn) {
+      // User is logged in, go to home
+      nextScreen = const HomeScreen();
+    } else if (isFirstLaunch) {
+      // First time user, show discover page
+      nextScreen = const DiscoverPage();
+      // Mark app as launched so we don't show discover again
+      await AppStateService.markAppLaunched();
+    } else {
+      // Returning user but not logged in, go directly to discover
+      // (they've seen it before)
+      nextScreen = const DiscoverPage();
+    }
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (_, __, ___) => const HomeScreen(),
+        pageBuilder: (_, __, ___) => nextScreen,
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -68,7 +93,7 @@ class _SplashScreenState extends State<SplashScreen>
       body: GestureDetector(
         onTap: () {
           _controller.stop();
-          _goToHome();
+          _navigateToNextScreen();
         }, // allow tap to skip
         child: Center(
           child: SizedBox(

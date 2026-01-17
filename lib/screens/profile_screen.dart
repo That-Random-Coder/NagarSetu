@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../models/user_model.dart';
+import '../services/auth_service.dart';
+import '../services/user_service.dart';
+import 'discover.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -8,57 +12,105 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // State variables
+  bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
+  UserModel? _user;
+
+  // Settings state
   bool _notificationsEnabled = true;
   String _selectedLanguage = 'English';
 
-  // Dummy user data
-  final Map<String, dynamic> user = {
-    'name': 'Rajesh Kumar',
-    'role': 'Citizen',
-    'city': 'New Delhi',
-    'ward': 'Ward 15 - Connaught Place',
-    'isVerified': true,
-    'mobile': '+91 98765 43210',
-    'email': 'rajesh.kumar@email.com',
-    'language': 'English',
-    'issuesReported': 24,
-    'issuesResolved': 18,
-    'issuesInProgress': 4,
-    'leaderboardRank': 12,
-    'totalPoints': 1450,
-    'badges': ['Top Reporter', 'Quick Responder', 'Verified Citizen'],
-    'memberSince': 'March 2024',
-  };
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  /// Load user profile from API
+  Future<void> _loadUserProfile() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
+
+    final response = await UserService.getCurrentUser();
+
+    if (!mounted) return;
+
+    if (response.success && response.user != null) {
+      setState(() {
+        _user = response.user;
+        _isLoading = false;
+      });
+    } else if (response.isUnauthorized) {
+      // Session expired, redirect to login
+      await AuthService.logout();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const DiscoverPage()),
+        (_) => false,
+      );
+    } else {
+      setState(() {
+        _hasError = true;
+        _errorMessage = response.message ?? 'Failed to load profile';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: CustomScrollView(
+    return Scaffold(backgroundColor: Colors.grey[50], body: _buildBody());
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_hasError) {
+      return _buildErrorState();
+    }
+
+    if (_user == null) {
+      return _buildErrorState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadUserProfile,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           _buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  _buildPersonalDetailsCard(),
-                  const SizedBox(height: 16),
-                  _buildActivitySummaryCard(),
-                  const SizedBox(height: 16),
-                  _buildContributionStatsCard(),
-                  const SizedBox(height: 16),
-                  _buildBadgesCard(),
-                  const SizedBox(height: 16),
-                  _buildSettingsCard(),
-                  const SizedBox(height: 16),
-                  _buildSupportCard(),
-                  const SizedBox(height: 24),
-                  _buildLogoutButton(),
-                  const SizedBox(height: 32),
-                ],
-              ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                const SizedBox(height: 16),
+                _buildPersonalDetailsCard(),
+                const SizedBox(height: 16),
+                _buildActivitySummaryCard(),
+                const SizedBox(height: 16),
+                _buildContributionStatsCard(),
+                const SizedBox(height: 16),
+                _buildBadgesCard(),
+                const SizedBox(height: 16),
+                _buildSettingsCard(),
+                const SizedBox(height: 16),
+                _buildSupportCard(),
+                const SizedBox(height: 24),
+                _buildLogoutButton(),
+                const SizedBox(height: 32),
+              ]),
             ),
           ),
         ],
@@ -66,7 +118,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'Something went wrong',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadUserProfile,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSliverAppBar() {
+    final user = _user!;
     return SliverAppBar(
       expandedHeight: 280,
       pinned: true,
@@ -112,7 +199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 50,
                         backgroundColor: Colors.blue[200],
                         child: Text(
-                          user['name'].split(' ').map((n) => n[0]).join(),
+                          user.initials,
                           style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
@@ -121,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    if (user['isVerified'])
+                    if (user.isVerified)
                       Positioned(
                         bottom: 4,
                         right: 4,
@@ -143,7 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 // User Name
                 Text(
-                  user['name'],
+                  user.displayName,
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -168,13 +255,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _getRoleIcon(user['role']),
+                        _getRoleIcon(user.displayRole),
                         color: Colors.white,
                         size: 16,
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        user['role'],
+                        user.displayRole,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -196,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${user['city']} • ${user['ward']}',
+                      user.displayLocation,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 13,
@@ -213,58 +300,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildPersonalDetailsCard() {
-    return _buildCard(
+    final user = _user!;
+    return _ProfileCard(
       title: 'Personal Details',
       icon: Icons.person_outline,
       children: [
-        _buildDetailRow(Icons.phone_outlined, 'Mobile', user['mobile']),
-        _buildDivider(),
-        _buildDetailRow(Icons.email_outlined, 'Email', user['email']),
-        _buildDivider(),
-        _buildDetailRow(Icons.location_city_outlined, 'Ward', user['ward']),
-        _buildDivider(),
-        _buildDetailRow(Icons.language, 'Language', user['language']),
-        _buildDivider(),
-        _buildDetailRow(
-          Icons.calendar_today_outlined,
-          'Member Since',
-          user['memberSince'],
+        _DetailRow(
+          icon: Icons.phone_outlined,
+          label: 'Mobile',
+          value: user.displayPhone,
         ),
+        const _CardDivider(),
+        _DetailRow(
+          icon: Icons.email_outlined,
+          label: 'Email',
+          value: user.displayEmail,
+        ),
+        const _CardDivider(),
+        _DetailRow(
+          icon: Icons.location_city_outlined,
+          label: 'Location',
+          value: user.displayLocation,
+        ),
+        if (user.gender != null) ...[
+          const _CardDivider(),
+          _DetailRow(
+            icon: Icons.person_outline,
+            label: 'Gender',
+            value: user.gender!,
+          ),
+        ],
+        if (user.age != null) ...[
+          const _CardDivider(),
+          _DetailRow(
+            icon: Icons.cake_outlined,
+            label: 'Age',
+            value: '${user.age} years',
+          ),
+        ],
+        if (user.memberSince != null) ...[
+          const _CardDivider(),
+          _DetailRow(
+            icon: Icons.calendar_today_outlined,
+            label: 'Member Since',
+            value: user.memberSince!,
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildActivitySummaryCard() {
-    return _buildCard(
+    final user = _user!;
+    return _ProfileCard(
       title: 'Activity Summary',
       icon: Icons.analytics_outlined,
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildStatBox(
-                'Reported',
-                user['issuesReported'].toString(),
-                Colors.blue,
-                Icons.report_outlined,
+              child: _StatBox(
+                label: 'Reported',
+                value: user.issuesReported.toString(),
+                color: Colors.blue,
+                icon: Icons.report_outlined,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildStatBox(
-                'Resolved',
-                user['issuesResolved'].toString(),
-                Colors.green,
-                Icons.check_circle_outline,
+              child: _StatBox(
+                label: 'Resolved',
+                value: user.issuesResolved.toString(),
+                color: Colors.green,
+                icon: Icons.check_circle_outline,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildStatBox(
-                'In Progress',
-                user['issuesInProgress'].toString(),
-                Colors.orange,
-                Icons.pending_outlined,
+              child: _StatBox(
+                label: 'In Progress',
+                value: user.issuesInProgress.toString(),
+                color: Colors.orange,
+                icon: Icons.pending_outlined,
               ),
             ),
           ],
@@ -274,7 +391,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildContributionStatsCard() {
-    return _buildCard(
+    final user = _user!;
+    return _ProfileCard(
       title: 'Contribution Stats',
       icon: Icons.emoji_events_outlined,
       children: [
@@ -312,7 +430,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '#${user['leaderboardRank']}',
+                      user.leaderboardRank > 0
+                          ? '#${user.leaderboardRank}'
+                          : '--',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -335,7 +455,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Icon(Icons.star, color: Colors.amber[600], size: 18),
                       const SizedBox(width: 4),
                       Text(
-                        '${user['totalPoints']}',
+                        '${user.totalPoints}',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -349,66 +469,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildMiniStat('Response Rate', '92%', Colors.green),
-            _buildMiniStat('Avg. Resolution', '3.2 days', Colors.blue),
-            _buildMiniStat('This Month', '+5', Colors.purple),
-          ],
-        ),
       ],
     );
   }
 
   Widget _buildBadgesCard() {
-    return _buildCard(
+    final user = _user!;
+    final badges = user.badges.isNotEmpty
+        ? user.badges
+        : ['New Member']; // Default badge
+
+    return _ProfileCard(
       title: 'Badges & Achievements',
       icon: Icons.military_tech_outlined,
-      trailing: TextButton(
-        onPressed: () {},
-        child: Text(
-          'View All',
-          style: TextStyle(
-            color: Colors.blue[600],
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+      trailing: user.badges.length > 4
+          ? TextButton(
+              onPressed: () {},
+              child: Text(
+                'View All',
+                style: TextStyle(
+                  color: Colors.blue[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          : null,
       children: [
         Wrap(
           spacing: 10,
           runSpacing: 10,
-          children: [
-            _buildBadge('Top Reporter', Icons.star, Colors.amber),
-            _buildBadge('Quick Responder', Icons.flash_on, Colors.orange),
-            _buildBadge('Verified Citizen', Icons.verified_user, Colors.blue),
-            _buildBadge('Community Hero', Icons.people, Colors.purple),
-          ],
+          children: badges.take(4).map((badge) {
+            return _BadgeChip(
+              label: badge,
+              icon: _getBadgeIcon(badge),
+              color: _getBadgeColor(badge),
+            );
+          }).toList(),
         ),
       ],
     );
   }
 
   Widget _buildSettingsCard() {
-    return _buildCard(
+    return _ProfileCard(
       title: 'Settings',
       icon: Icons.settings_outlined,
       children: [
-        _buildSettingRow(
-          Icons.notifications_outlined,
-          'Notifications',
+        _SettingRow(
+          icon: Icons.notifications_outlined,
+          label: 'Notifications',
           trailing: Switch(
             value: _notificationsEnabled,
             onChanged: (val) => setState(() => _notificationsEnabled = val),
-            activeColor: Colors.blue[600],
+            activeThumbColor: Colors.blue[600],
+            activeTrackColor: Colors.blue[200],
           ),
         ),
-        _buildDivider(),
-        _buildSettingRow(
-          Icons.translate,
-          'Language',
+        const _CardDivider(),
+        _SettingRow(
+          icon: Icons.translate,
+          label: 'Language',
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -435,21 +555,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        _buildDivider(),
-        _buildSettingRow(
-          Icons.accessibility_new,
-          'Accessibility',
-          trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
-          onTap: () {},
-        ),
-        _buildDivider(),
-        _buildSettingRow(
-          Icons.dark_mode_outlined,
-          'Dark Mode',
+        const _CardDivider(),
+        _SettingRow(
+          icon: Icons.dark_mode_outlined,
+          label: 'Dark Mode',
           trailing: Switch(
             value: false,
             onChanged: (val) {},
-            activeColor: Colors.blue[600],
+            activeThumbColor: Colors.blue[600],
+            activeTrackColor: Colors.blue[200],
           ),
         ),
       ],
@@ -457,35 +571,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSupportCard() {
-    return _buildCard(
+    return _ProfileCard(
       title: 'Support & Info',
       icon: Icons.help_outline,
       children: [
-        _buildSupportRow(
-          Icons.help_center_outlined,
-          'Help & FAQs',
-          onTap: () {},
+        _SupportRow(icon: Icons.help_center_outlined, label: 'Help & FAQs'),
+        const _CardDivider(),
+        _SupportRow(icon: Icons.info_outline, label: 'About NagarSetu'),
+        const _CardDivider(),
+        _SupportRow(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy'),
+        const _CardDivider(),
+        _SupportRow(
+          icon: Icons.description_outlined,
+          label: 'Terms of Service',
         ),
-        _buildDivider(),
-        _buildSupportRow(Icons.info_outline, 'About NagarSetu', onTap: () {}),
-        _buildDivider(),
-        _buildSupportRow(
-          Icons.privacy_tip_outlined,
-          'Privacy Policy',
-          onTap: () {},
-        ),
-        _buildDivider(),
-        _buildSupportRow(
-          Icons.description_outlined,
-          'Terms of Service',
-          onTap: () {},
-        ),
-        _buildDivider(),
-        _buildSupportRow(
-          Icons.feedback_outlined,
-          'Send Feedback',
-          onTap: () {},
-        ),
+        const _CardDivider(),
+        _SupportRow(icon: Icons.feedback_outlined, label: 'Send Feedback'),
       ],
     );
   }
@@ -494,9 +595,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () {
-          _showLogoutDialog();
-        },
+        onPressed: _showLogoutDialog,
         icon: const Icon(Icons.logout, color: Colors.red),
         label: const Text(
           'Logout',
@@ -517,13 +616,132 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Helper Widgets
-  Widget _buildCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-    Widget? trailing,
-  }) {
+  // Helper methods
+  IconData _getRoleIcon(String role) {
+    switch (role.toLowerCase()) {
+      case 'worker':
+        return Icons.engineering;
+      case 'supervisor':
+        return Icons.supervisor_account;
+      case 'admin':
+        return Icons.admin_panel_settings;
+      case 'department head':
+        return Icons.business;
+      case 'ward head':
+        return Icons.location_city;
+      case 'mayor':
+        return Icons.account_balance;
+      default:
+        return Icons.person;
+    }
+  }
+
+  IconData _getBadgeIcon(String badge) {
+    final lowerBadge = badge.toLowerCase();
+    if (lowerBadge.contains('top') || lowerBadge.contains('reporter')) {
+      return Icons.star;
+    } else if (lowerBadge.contains('quick') || lowerBadge.contains('fast')) {
+      return Icons.flash_on;
+    } else if (lowerBadge.contains('verified')) {
+      return Icons.verified_user;
+    } else if (lowerBadge.contains('hero') ||
+        lowerBadge.contains('community')) {
+      return Icons.people;
+    } else if (lowerBadge.contains('new')) {
+      return Icons.fiber_new;
+    }
+    return Icons.emoji_events;
+  }
+
+  Color _getBadgeColor(String badge) {
+    final lowerBadge = badge.toLowerCase();
+    if (lowerBadge.contains('top') || lowerBadge.contains('star')) {
+      return Colors.amber;
+    } else if (lowerBadge.contains('quick') || lowerBadge.contains('fast')) {
+      return Colors.orange;
+    } else if (lowerBadge.contains('verified')) {
+      return Colors.blue;
+    } else if (lowerBadge.contains('hero')) {
+      return Colors.purple;
+    } else if (lowerBadge.contains('new')) {
+      return Colors.green;
+    }
+    return Colors.teal;
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.logout, color: Colors.red[400]),
+            const SizedBox(width: 10),
+            const Text('Logout'),
+          ],
+        ),
+        content: const Text('Are you sure you want to logout from NagarSetu?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Close dialog first
+              Navigator.pop(dialogContext);
+
+              // Show loading
+              if (mounted) {
+                setState(() => _isLoading = true);
+              }
+
+              // Clear auth data
+              await AuthService.logout();
+
+              // Navigate to Discover
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DiscoverPage()),
+                  (_) => false,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Optimized Stateless Helper Widgets (for better performance)
+// ============================================================================
+
+class _ProfileCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+  final Widget? trailing;
+
+  const _ProfileCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -562,7 +780,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-                if (trailing != null) trailing,
+                if (trailing != null) trailing!,
               ],
             ),
           ),
@@ -574,8 +792,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -584,24 +815,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(width: 12),
           Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           const Spacer(),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[800],
+          Flexible(
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[800],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildDivider() {
+class _CardDivider extends StatelessWidget {
+  const _CardDivider();
+
+  @override
+  Widget build(BuildContext context) {
     return Divider(height: 1, color: Colors.grey[200]);
   }
+}
 
-  Widget _buildStatBox(String label, String value, Color color, IconData icon) {
+class _StatBox extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -627,25 +881,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
 
-  Widget _buildMiniStat(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-      ],
-    );
-  }
+class _BadgeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
 
-  Widget _buildBadge(String label, IconData icon, Color color) {
+  const _BadgeChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -670,13 +920,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
 
-  Widget _buildSettingRow(
-    IconData icon,
-    String label, {
-    required Widget trailing,
-    VoidCallback? onTap,
-  }) {
+class _SettingRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Widget trailing;
+  final VoidCallback? onTap;
+
+  const _SettingRow({
+    required this.icon,
+    required this.label,
+    required this.trailing,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -697,12 +957,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
 
-  Widget _buildSupportRow(
-    IconData icon,
-    String label, {
-    required VoidCallback onTap,
-  }) {
+class _SupportRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _SupportRow({required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -720,55 +985,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(Icons.chevron_right, color: Colors.grey[400]),
           ],
         ),
-      ),
-    );
-  }
-
-  IconData _getRoleIcon(String role) {
-    switch (role) {
-      case 'Worker':
-        return Icons.engineering;
-      case 'Supervisor':
-        return Icons.supervisor_account;
-      case 'Admin':
-        return Icons.admin_panel_settings;
-      default:
-        return Icons.person;
-    }
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.logout, color: Colors.red[400]),
-            const SizedBox(width: 10),
-            const Text('Logout'),
-          ],
-        ),
-        content: const Text('Are you sure you want to logout from NagarSetu?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Handle logout
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }

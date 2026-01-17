@@ -42,6 +42,9 @@ dependencies:
   timelines_plus: ^1.0.6
   lottie: ^3.3.2
   shared_preferences: ^2.2.0
+  http: ^1.2.0
+  flutter_secure_storage: ^9.2.4
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -67,7 +70,7 @@ flutter:
 
   # Assets
   assets:
-    - assets/NagarSetu_Logo.json
+    - assets/  # include all files under the assets folder (e.g. NagarSetu_Logo.json, NagarSetu_SplashScreen.mp4)
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
