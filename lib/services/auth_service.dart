@@ -73,6 +73,7 @@ class AuthService {
   static Future<ApiResponse<LoginResponse>> login({
     required String email,
     required String password,
+    bool isWorker = false,
   }) async {
     try {
       final uri = Uri.parse(
@@ -99,12 +100,13 @@ class AuthService {
         final data = jsonDecode(response.body);
         final loginResponse = LoginResponse.fromJson(data);
 
-        // Save user data to secure storage
+        // Save user data to secure storage with worker status
         await SecureStorageService.saveUserData(
           token: loginResponse.token,
           userId: loginResponse.id,
           email: loginResponse.email,
           fullName: loginResponse.fullName,
+          isWorker: isWorker,
         );
 
         return ApiResponse(success: true, data: loginResponse);
@@ -142,6 +144,7 @@ class AuthService {
     String? gender,
     String? location,
     String role = 'CITIZEN',
+    bool isWorker = false,
   }) async {
     try {
       final uri = Uri.parse(
@@ -177,12 +180,13 @@ class AuthService {
         final data = jsonDecode(response.body);
         final registerResponse = RegisterResponse.fromJson(data);
 
-        // Save basic auth data (user needs to complete profile)
+        // Save basic auth data with worker status
         await SecureStorageService.saveUserData(
           token: registerResponse.token,
           userId: registerResponse.id,
           email: email,
           fullName: fullName,
+          isWorker: isWorker,
         );
 
         return ApiResponse(success: true, data: registerResponse);
@@ -267,6 +271,11 @@ class AuthService {
   /// Check if user is logged in
   static Future<bool> isLoggedIn() async {
     return await SecureStorageService.isLoggedIn();
+  }
+
+  /// Check if current user is a worker
+  static Future<bool> isWorker() async {
+    return await SecureStorageService.isWorker();
   }
 
   /// Get current user token

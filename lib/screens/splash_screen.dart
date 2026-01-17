@@ -3,8 +3,10 @@ import 'package:lottie/lottie.dart';
 
 import '../services/auth_service.dart';
 import '../services/app_state_service.dart';
+import '../services/secure_storage_service.dart';
 import 'discover.dart';
 import 'home_screen.dart';
+import 'home_page_worker.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -47,14 +49,19 @@ class _SplashScreenState extends State<SplashScreen>
     // Check if user is logged in and if this is first launch
     final isLoggedIn = await AuthService.isLoggedIn();
     final isFirstLaunch = await AppStateService.isFirstLaunch();
+    final isWorker = await SecureStorageService.isWorker();
 
     if (!mounted) return;
 
     Widget nextScreen;
 
     if (isLoggedIn) {
-      // User is logged in, go to home
-      nextScreen = const HomeScreen();
+      // User is logged in, check if worker or regular user
+      if (isWorker) {
+        nextScreen = const WorkerHomePage();
+      } else {
+        nextScreen = const HomeScreen();
+      }
     } else if (isFirstLaunch) {
       // First time user, show discover page
       nextScreen = const DiscoverPage();

@@ -15,6 +15,7 @@ class SecureStorageService {
   static const String _userEmailKey = 'user_email';
   static const String _userNameKey = 'user_name';
   static const String _isLoggedInKey = 'is_logged_in';
+  static const String _isWorkerKey = 'is_worker';
 
   /// Save authentication token
   static Future<void> saveToken(String token) async {
@@ -67,12 +68,24 @@ class SecureStorageService {
     return value == 'true';
   }
 
+  /// Set worker status
+  static Future<void> setIsWorker(bool value) async {
+    await _storage.write(key: _isWorkerKey, value: value.toString());
+  }
+
+  /// Check if user is a worker
+  static Future<bool> isWorker() async {
+    final value = await _storage.read(key: _isWorkerKey);
+    return value == 'true';
+  }
+
   /// Save all user data after successful login
   static Future<void> saveUserData({
     required String token,
     required String userId,
     String? email,
     String? fullName,
+    bool isWorker = false,
   }) async {
     await Future.wait([
       saveToken(token),
@@ -80,6 +93,7 @@ class SecureStorageService {
       if (email != null) saveUserEmail(email),
       if (fullName != null) saveUserName(fullName),
       setLoggedIn(true),
+      setIsWorker(isWorker),
     ]);
   }
 
@@ -96,6 +110,7 @@ class SecureStorageService {
       _storage.delete(key: _userEmailKey),
       _storage.delete(key: _userNameKey),
       _storage.delete(key: _isLoggedInKey),
+      _storage.delete(key: _isWorkerKey),
     ]);
   }
 }

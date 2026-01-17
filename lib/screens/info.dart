@@ -3,6 +3,7 @@ import 'package:lottie/lottie.dart';
 import '../services/auth_service.dart';
 import '../widgets/lottie_loader.dart';
 import 'home_screen.dart';
+import 'home_page_worker.dart';
 
 class InfoScreen extends StatefulWidget {
   final String email;
@@ -15,6 +16,16 @@ class InfoScreen extends StatefulWidget {
     required this.password,
     required this.otpCode,
   });
+
+  /// Check if email contains 'worker' keyword (case-insensitive)
+  bool get isWorkerEmail => email.toLowerCase().contains('worker');
+
+  /// Get the actual email to send to backend (without 'worker' keyword)
+  String get actualEmail {
+    if (!isWorkerEmail) return email;
+    // Remove 'worker' from email (case-insensitive)
+    return email.replaceAll(RegExp(r'worker', caseSensitive: false), '');
+  }
 
   @override
   State<InfoScreen> createState() => _InfoScreenState();
@@ -37,8 +48,15 @@ class _InfoScreenState extends State<InfoScreen> {
 
     setState(() => _isLoading = true);
 
+    // Check if user is a worker based on email
+    final bool isWorker = widget.isWorkerEmail;
+    // Get the actual email without 'worker' keyword
+    final String actualEmail = widget.actualEmail;
+    // Determine role based on worker status
+    final String role = isWorker ? 'WORKER' : 'CITIZEN';
+
     final response = await AuthService.register(
-      email: widget.email,
+      email: actualEmail,
       password: widget.password,
       code: widget.otpCode,
       fullName: _nameController.text.trim(),
@@ -46,7 +64,8 @@ class _InfoScreenState extends State<InfoScreen> {
       age: int.tryParse(_ageController.text.trim()),
       gender: _selectedGender,
       location: _locationController.text.trim(),
-      role: 'CITIZEN',
+      role: role,
+      isWorker: isWorker,
     );
 
     if (!mounted) return;
@@ -54,9 +73,13 @@ class _InfoScreenState extends State<InfoScreen> {
 
     if (response.success) {
       _showSnackBar('Registration successful!');
+      // Navigate to appropriate home screen based on worker status
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(
+          builder: (context) =>
+              isWorker ? const WorkerHomePage() : const HomeScreen(),
+        ),
         (route) => false,
       );
     } else {

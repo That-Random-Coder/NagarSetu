@@ -23,10 +23,30 @@ class _MapScreenState extends State<MapScreen> {
   String? _error;
   bool _isLoadingLocation = true;
 
+  // View mode: 'stage' or 'criticality'
+  String _viewMode = 'stage';
+
   // Default to Delhi, will be updated with user's location
   LatLng _userLocation = const LatLng(28.6120, 77.2050);
   LatLng _currentCenter = const LatLng(28.6120, 77.2050);
   double _currentZoom = 13.5;
+
+  // Get color based on current view mode
+  Color _getMarkerColor(IssueMapModel issue) {
+    if (_viewMode == 'criticality') {
+      return _getCriticalityColor(issue.criticality);
+    } else {
+      return _getStatusColor(issue.stages);
+    }
+  }
+
+  Color _getCircleColorForIssue(IssueMapModel issue) {
+    return _getMarkerColor(issue).withOpacity(0.25);
+  }
+
+  Color _getBorderColorForIssue(IssueMapModel issue) {
+    return _getMarkerColor(issue).withOpacity(0.7);
+  }
 
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
@@ -45,14 +65,17 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Color _getCircleColor(String status) {
-    final c = _getStatusColor(status);
-    return c.withOpacity(0.25);
-  }
-
-  Color _getBorderColor(String status) {
-    final c = _getStatusColor(status);
-    return c.withOpacity(0.7);
+  Color _getCriticalityColor(String criticality) {
+    switch (criticality.toUpperCase()) {
+      case 'HIGH':
+        return Colors.red;
+      case 'MEDIUM':
+        return Colors.orange;
+      case 'LOW':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
@@ -365,8 +388,8 @@ class _MapScreenState extends State<MapScreen> {
                       point: LatLng(issue.latitude, issue.longitude),
                       radius: 80,
                       useRadiusInMeter: true,
-                      color: _getCircleColor(issue.stages),
-                      borderColor: _getBorderColor(issue.stages),
+                      color: _getCircleColorForIssue(issue),
+                      borderColor: _getBorderColorForIssue(issue),
                       borderStrokeWidth: 2,
                     );
                   }).toList(),
@@ -382,7 +405,7 @@ class _MapScreenState extends State<MapScreen> {
                         onTap: () => _showIssueDetails(issue),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: _getStatusColor(issue.stages),
+                            color: _getMarkerColor(issue),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -408,7 +431,9 @@ class _MapScreenState extends State<MapScreen> {
             child: Column(
               children: [
                 _buildHeader(context),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                _buildViewModeToggle(),
+                const SizedBox(height: 8),
                 _buildLegend(),
               ],
             ),
@@ -574,6 +599,104 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Widget _buildViewModeToggle() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _viewMode = 'stage'),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _viewMode == 'stage'
+                      ? const Color(0xFF1976D2)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.timeline,
+                      size: 16,
+                      color: _viewMode == 'stage'
+                          ? Colors.white
+                          : Colors.grey[600],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'By Stage',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _viewMode == 'stage'
+                            ? Colors.white
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _viewMode = 'criticality'),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _viewMode == 'criticality'
+                      ? const Color(0xFF1976D2)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.priority_high,
+                      size: 16,
+                      color: _viewMode == 'criticality'
+                          ? Colors.white
+                          : Colors.grey[600],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'By Criticality',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _viewMode == 'criticality'
+                            ? Colors.white
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLegend() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -589,15 +712,24 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildLegendItem(Colors.red, 'Pending'),
-          _buildLegendItem(Colors.orange, 'In Progress'),
-          _buildLegendItem(Colors.blue, 'Acknowledged'),
-          _buildLegendItem(Colors.green, 'Resolved'),
-        ],
-      ),
+      child: _viewMode == 'criticality'
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildLegendItem(Colors.red, 'High'),
+                _buildLegendItem(Colors.orange, 'Medium'),
+                _buildLegendItem(Colors.green, 'Low'),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildLegendItem(Colors.red, 'Pending'),
+                _buildLegendItem(Colors.orange, 'In Progress'),
+                _buildLegendItem(Colors.blue, 'Assigned'),
+                _buildLegendItem(Colors.green, 'Resolved'),
+              ],
+            ),
     );
   }
 
@@ -667,19 +799,6 @@ class _MapScreenState extends State<MapScreen> {
         return Icons.report_problem;
       default:
         return Icons.report_problem;
-    }
-  }
-
-  Color _getCriticalityColor(String criticality) {
-    switch (criticality.toUpperCase()) {
-      case 'HIGH':
-        return Colors.red;
-      case 'MEDIUM':
-        return Colors.orange;
-      case 'LOW':
-        return Colors.green;
-      default:
-        return Colors.grey;
     }
   }
 
