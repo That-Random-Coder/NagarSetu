@@ -21,6 +21,22 @@ class Environment {
   static const String userEndpoint = '$apiVersion/user';
   static const String getUserEndpoint = '$userEndpoint/get';
 
+  /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
+  /// Get your free API key from: https://aistudio.google.com/app/apikey
+  // static const String geminiApiKey = 'AIzaSyBuKMAWjJapcvCVDDZdfvHC8p3SqJXHnHk';
+
+  /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
+  /// Get your free API key from: https://aistudio.google.com/app/apikey
+  static const String geminiApiKey = '';
+
+  /// Groq AI API Key (Free tier: 30 RPM, 14,400 RPD - FASTEST)
+  /// Get your free API key from: https://console.groq.com/keys
+  static const String groqApiKey =
+      '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';
+
+  /// Which AI provider to use: 'gemini' or 'groq'
+  static const String aiProvider = 'groq';
+
   /// Request timeout duration in seconds
   static const int requestTimeout = 30;
 

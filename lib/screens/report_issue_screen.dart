@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'dart:io';
 import '../widgets/lottie_loader.dart';
+import '../services/ai_service.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -20,12 +21,17 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   int _selectedIssueType = 0;
   int _selectedCriticality = 1;
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
   final MapController _mapController = MapController();
   LatLng _currentLocation = const LatLng(28.6139, 77.2090);
   LatLng _selectedLocation = const LatLng(28.6139, 77.2090);
   bool _isLoadingLocation = true;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+
+  // Title generation state
+  bool _autoGenerateTitle = true;
+  bool _isGeneratingTitle = false;
 
   late SpeechToText _speech;
   bool _speechAvailable = false;
@@ -51,6 +57,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   void dispose() {
     _speech.stop();
     _descriptionController.dispose();
+    _titleController.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -105,6 +112,42 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       setState(() {
         _isListening = false;
       });
+    }
+  }
+
+  Future<void> _generateTitle() async {
+    if (_descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a description first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGeneratingTitle = true;
+    });
+
+    try {
+      final title = await AIService.instance.generateIssueTitle(
+        description: _descriptionController.text,
+        issueType: issueTypes[_selectedIssueType]['label'],
+        criticality: criticalityLevels[_selectedCriticality],
+      );
+
+      if (title != null && mounted) {
+        setState(() {
+          _titleController.text = title;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingTitle = false;
+        });
+      }
     }
   }
 
@@ -287,6 +330,20 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       return;
     }
 
+    if (_titleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _autoGenerateTitle
+                ? 'Please generate a title using AI'
+                : 'Please enter a title for your issue',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -331,6 +388,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               _buildAddMediaSection(),
               const SizedBox(height: 24),
               _buildDescriptionSection(),
+              const SizedBox(height: 24),
+              _buildTitleSection(),
               const SizedBox(height: 24),
               _buildCriticalitySection(),
               const SizedBox(height: 24),
@@ -608,6 +667,145 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTitleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Issue Title',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  'Auto-generate',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: _autoGenerateTitle,
+                  onChanged: (value) {
+                    setState(() {
+                      _autoGenerateTitle = value;
+                      if (value) {
+                        _titleController.clear();
+                      }
+                    });
+                  },
+                  activeColor: Colors.blue[600],
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_autoGenerateTitle) ...[
+          // AI Generate Button
+          GestureDetector(
+            onTap: _isGeneratingTitle ? null : _generateTitle,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: _isGeneratingTitle
+                  ? const Center(child: ButtonLoader(size: 24))
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          color: Colors.blue[600],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Generate Title from Description',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue[600],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+          if (_titleController.text.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green[300]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green[600], size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _titleController.text,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _titleController.clear();
+                      });
+                    },
+                    child: Icon(
+                      Icons.refresh,
+                      color: Colors.grey[500],
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ] else ...[
+          // Manual Title Entry
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: TextField(
+              controller: _titleController,
+              maxLines: 1,
+              decoration: InputDecoration(
+                hintText: 'Enter a title for your issue...',
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(16),
+                prefixIcon: Icon(Icons.title, color: Colors.grey[500]),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
