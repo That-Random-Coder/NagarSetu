@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is required to take photos of issues.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access is required to select images when reporting issues.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is required to record speech for report descriptions.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Location access is required to tag issue location.</string>
 </dict>
 </plist>

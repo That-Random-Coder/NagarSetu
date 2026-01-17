@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'in_app_camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import 'dart:io';
 
 class ReportIssueScreen extends StatefulWidget {
@@ -24,6 +26,10 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
+  late SpeechToText _speech;
+  bool _speechAvailable = false;
+  bool _isListening = false;
+
   final List<Map<String, dynamic>> issueTypes = [
     {'icon': Icons.electrical_services, 'label': 'Electricity'},
     {'icon': Icons.water_drop_outlined, 'label': 'Water'},
@@ -37,13 +43,68 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   void initState() {
     super.initState();
     _getCurrentLocation();
+    _initSpeech();
   }
 
   @override
   void dispose() {
+    _speech.stop();
     _descriptionController.dispose();
     _mapController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    _speech = SpeechToText();
+    try {
+      _speechAvailable = await _speech.initialize(
+        onStatus: (val) {},
+        onError: (val) {},
+      );
+    } catch (e) {
+      _speechAvailable = false;
+    }
+    setState(() {});
+  }
+
+  Future<void> _toggleListening() async {
+    if (!_isListening) {
+      final status = await Permission.microphone.request();
+      if (status.isGranted) {
+        if (!_speechAvailable) {
+          await _initSpeech();
+        }
+        if (_speechAvailable) {
+          setState(() {
+            _isListening = true;
+          });
+          _speech.listen(
+            onResult: (result) {
+              setState(() {
+                _descriptionController.text = result.recognizedWords;
+                _descriptionController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: _descriptionController.text.length),
+                );
+              });
+            },
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Speech recognition not available')),
+          );
+        }
+      } else if (status.isPermanentlyDenied) {
+        _showPermissionDeniedDialog(
+          'Microphone Permission Required',
+          'Please enable microphone permission to use speech-to-text.',
+        );
+      }
+    } else {
+      _speech.stop();
+      setState(() {
+        _isListening = false;
+      });
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -76,7 +137,10 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       setState(() {
         _isLoadingLocation = false;
       });
-      _showPermissionDeniedDialog();
+      _showPermissionDeniedDialog(
+        'Location Permission Required',
+        'Please enable location permission to access your location.',
+      );
     }
   }
 
@@ -89,14 +153,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  void _showPermissionDeniedDialog() {
+  void _showPermissionDeniedDialog(String title, String body) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Location Permission Required'),
-        content: const Text(
-          'Please enable location permission to report issues with accurate location.',
-        ),
+        title: Text(title),
+        content: Text(body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -138,13 +200,24 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 title: const Text('Take Photo'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? image = await _picker.pickImage(
-                    source: ImageSource.camera,
-                  );
-                  if (image != null) {
-                    setState(() {
-                      _selectedImage = File(image.path);
-                    });
+                  final status = await Permission.camera.request();
+                  if (status.isGranted) {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const InAppCameraScreen(),
+                      ),
+                    );
+                    if (result != null && result is File) {
+                      setState(() {
+                        _selectedImage = result;
+                      });
+                    }
+                  } else if (status.isPermanentlyDenied) {
+                    _showPermissionDeniedDialog(
+                      'Camera Permission Required',
+                      'Please enable camera permission to take photos.',
+                    );
                   }
                 },
               ),
@@ -160,13 +233,38 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 title: const Text('Choose from Gallery'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? image = await _picker.pickImage(
-                    source: ImageSource.gallery,
-                  );
-                  if (image != null) {
-                    setState(() {
-                      _selectedImage = File(image.path);
-                    });
+                  PermissionStatus galleryStatus;
+                  if (Theme.of(context).platform == TargetPlatform.iOS) {
+                    galleryStatus = await Permission.photos.request();
+                  } else {
+                    galleryStatus = await Permission.storage.request();
+                  }
+
+                  if (galleryStatus.isGranted) {
+                    try {
+                      final XFile? image = await _picker.pickImage(
+                        source: ImageSource.gallery,
+                        imageQuality: 85,
+                        maxWidth: 1600,
+                      );
+                      if (image != null) {
+                        setState(() {
+                          _selectedImage = File(image.path);
+                        });
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Unable to open gallery'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } else if (galleryStatus.isPermanentlyDenied) {
+                    _showPermissionDeniedDialog(
+                      'Storage Permission Required',
+                      'Please enable storage permission to pick photos.',
+                    );
                   }
                 },
               ),
@@ -347,7 +445,35 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         ),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: _pickImage,
+          onTap: () async {
+            final status = await Permission.camera.request();
+            if (status.isGranted) {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InAppCameraScreen(),
+                ),
+              );
+              if (result != null && result is File) {
+                setState(() {
+                  _selectedImage = result;
+                });
+              }
+            } else if (status.isDenied) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Camera permission is required to take photos.',
+                  ),
+                ),
+              );
+            } else if (status.isPermanentlyDenied) {
+              _showPermissionDeniedDialog(
+                'Camera Permission Required',
+                'Please enable camera permission to take photos.',
+              );
+            }
+          },
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 30),
@@ -462,15 +588,38 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey[300]!),
           ),
-          child: TextField(
-            controller: _descriptionController,
-            maxLines: 4,
-            decoration: InputDecoration(
-              hintText: 'Describe the issue in detail...',
-              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(16),
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _descriptionController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Describe the issue in detail...',
+                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 12, bottom: 8),
+                child: GestureDetector(
+                  onTap: _toggleListening,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _isListening ? Colors.red : Colors.blue[50],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? Colors.white : Colors.blue[600],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

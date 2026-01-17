@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'report_issue_screen.dart';
+import 'my_issues_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -505,9 +506,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSelected = _currentIndex == index;
     return InkWell(
       onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
+        if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MyIssuesScreen()),
+          );
+        } else {
+          setState(() {
+            _currentIndex = index;
+          });
+        }
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
