@@ -5,9 +5,11 @@ import '../widgets/lottie_loader.dart';
 import '../services/auth_service.dart';
 import '../services/worker_service.dart';
 import '../services/supervisor_service.dart';
+import '../services/secure_storage_service.dart';
 import 'home_screen.dart';
 import 'home_page_worker.dart';
 import 'home_page_supervisor.dart';
+import 'home_page_admin.dart';
 import 'info.dart';
 import 'reset.dart';
 
@@ -57,6 +59,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Check if email starts with 'admin.' (case-insensitive)
+  bool _isAdminEmail(String email) => email.toLowerCase().startsWith('admin.');
+
   /// Check if email contains 'worker' keyword (case-insensitive)
   bool _isWorkerEmail(String email) => email.toLowerCase().contains('worker');
 
@@ -64,13 +69,20 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSupervisorEmail(String email) =>
       email.toLowerCase().contains('supervisor');
 
-  /// Get the actual email to send to backend (without 'worker' or 'supervisor' keyword)
+  /// Get the actual email to send to backend (without 'admin.', 'worker' or 'supervisor' keyword)
   String _getActualEmail(String email) {
     String result = email;
-    if (_isWorkerEmail(email)) {
+    // Remove admin. prefix first
+    if (_isAdminEmail(email)) {
+      result = result.replaceFirst(
+        RegExp(r'^admin\.', caseSensitive: false),
+        '',
+      );
+    }
+    if (_isWorkerEmail(result)) {
       result = result.replaceAll(RegExp(r'worker', caseSensitive: false), '');
     }
-    if (_isSupervisorEmail(email)) {
+    if (_isSupervisorEmail(result)) {
       result = result.replaceAll(
         RegExp(r'supervisor', caseSensitive: false),
         '',
@@ -141,6 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     final email = _emailController.text.trim();
+    final isAdmin = _isAdminEmail(email);
     final isWorker = _isWorkerEmail(email);
     final isSupervisor = _isSupervisorEmail(email);
     final actualEmail = _getActualEmail(email);
@@ -150,7 +163,20 @@ class _LoginScreenState extends State<LoginScreen> {
       bool success = false;
       String? errorMessage;
 
-      if (isSupervisor) {
+      // Admin uses citizen authentication endpoint (unified)
+      if (isAdmin) {
+        final response = await AuthService.login(
+          email: actualEmail,
+          password: _passwordController.text,
+          isWorker: false,
+        );
+        success = response.success;
+        errorMessage = response.message;
+        if (success) {
+          // Save admin role
+          await SecureStorageService.saveUserRole('ADMIN');
+        }
+      } else if (isSupervisor) {
         final response = await SupervisorService.login(
           email: actualEmail,
           password: _passwordController.text,
@@ -180,7 +206,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         // Navigate to appropriate home screen based on user type
         Widget homeScreen;
-        if (isSupervisor) {
+        if (isAdmin) {
+          homeScreen = const AdminPanelHomePage();
+        } else if (isSupervisor) {
           homeScreen = const AdminHomePage();
         } else if (isWorker) {
           homeScreen = const WorkerHomePage();

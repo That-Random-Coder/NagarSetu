@@ -6,7 +6,7 @@ class Environment {
   /// Base URL for the API server
   /// Change this for different environments (dev, staging, production)
   static const String apiBaseUrl =
-      'https://deborah-mega-databases-accomplish.trycloudflare.com';
+      'https://subscription-term-weekend-confidence.trycloudflare.com';
 
   /// API endpoints
   static const String apiVersion = '/api';
@@ -39,6 +39,13 @@ class Environment {
   static const String adminSupervisorsEndpoint = '$adminEndpoint/supervisors';
   static const String adminSupervisorsNoStartEndpoint =
       '$adminEndpoint/supervisors/no-start';
+  static const String adminAcceptWorkerEndpoint = '$adminEndpoint/acceptWorker';
+  static const String adminAcceptSupervisorEndpoint =
+      '$adminEndpoint/acceptSupervisor';
+  static const String adminReassignWorkerEndpoint =
+      '$adminEndpoint/reassignWorker';
+  static const String adminReassignIssueWorkerEndpoint =
+      '$adminEndpoint/reassignIssueWorker';
 
   // User endpoints
   static const String userEndpoint = '$apiVersion/user';
@@ -53,6 +60,8 @@ class Environment {
   static const String getIssuesForMapEndpoint = '$issueEndpoint/user/map';
   static const String markIssueDoneEndpoint = '$issueEndpoint/done';
   static const String getRecentIssuesEndpoint = '$issueEndpoint/recent';
+  static const String getWeeklyStatsEndpoint =
+      '$issueEndpoint/stats/weekly/stages';
 
   /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
   /// Get your free API key from: https://aistudio.google.com/app/apikey

@@ -7,6 +7,8 @@ import '../services/secure_storage_service.dart';
 import 'discover.dart';
 import 'home_screen.dart';
 import 'home_page_worker.dart';
+import 'home_page_supervisor.dart';
+import 'home_page_admin.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -49,6 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Check if user is logged in and if this is first launch
     final isLoggedIn = await AuthService.isLoggedIn();
     final isFirstLaunch = await AppStateService.isFirstLaunch();
+    final userRole = await SecureStorageService.getUserRole();
     final isWorker = await SecureStorageService.isWorker();
 
     if (!mounted) return;
@@ -56,11 +59,24 @@ class _SplashScreenState extends State<SplashScreen>
     Widget nextScreen;
 
     if (isLoggedIn) {
-      // User is logged in, check if worker or regular user
-      if (isWorker) {
-        nextScreen = const WorkerHomePage();
-      } else {
-        nextScreen = const HomeScreen();
+      // User is logged in, route based on their role
+      switch (userRole?.toUpperCase()) {
+        case 'ADMIN':
+          nextScreen = const AdminPanelHomePage();
+          break;
+        case 'SUPERVISOR':
+          nextScreen = const AdminHomePage();
+          break;
+        case 'WORKER':
+          nextScreen = const WorkerHomePage();
+          break;
+        default:
+          // For CITIZEN or unknown roles, check isWorker flag as fallback
+          if (isWorker) {
+            nextScreen = const WorkerHomePage();
+          } else {
+            nextScreen = const HomeScreen();
+          }
       }
     } else if (isFirstLaunch) {
       // First time user, show discover page

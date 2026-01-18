@@ -5,6 +5,8 @@ import 'package:http_parser/http_parser.dart';
 import '../config/environment.dart';
 import '../models/issue_model.dart';
 import '../models/issue_map_model.dart';
+import '../models/recent_issue_model.dart';
+import '../models/weekly_stats_model.dart';
 import 'secure_storage_service.dart';
 
 class IssueService {
@@ -690,6 +692,133 @@ class IssueService {
       return ApiResult(
         success: false,
         message: 'Failed to mark issue as done. Please check your connection.',
+      );
+    }
+  }
+
+  /// Get recent issues for the home page
+  /// Uses /api/issue/recent endpoint
+  static Future<ApiResult<List<RecentIssue>>> getRecentIssues({
+    int page = 0,
+    int size = 10,
+  }) async {
+    try {
+      final uri =
+          Uri.parse(
+            '${Environment.apiBaseUrl}${Environment.getRecentIssuesEndpoint}',
+          ).replace(
+            queryParameters: {'page': page.toString(), 'size': size.toString()},
+          );
+
+      _log('GET RECENT ISSUES REQUEST: $uri');
+
+      final headers = await _getHeaders();
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'GET RECENT ISSUES RESPONSE: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        List<dynamic> content;
+
+        // Handle paginated response (PageIssueRecent)
+        if (data is Map && data.containsKey('content')) {
+          content = data['content'] as List<dynamic>;
+        } else if (data is List) {
+          content = data;
+        } else {
+          content = [];
+        }
+
+        final issues = content
+            .map((json) => RecentIssue.fromJson(json as Map<String, dynamic>))
+            .toList();
+
+        return ApiResult(success: true, data: issues);
+      } else if (response.statusCode == 204) {
+        // No content - empty list
+        return ApiResult(success: true, data: []);
+      } else {
+        final error = _parseError(response.body);
+        return ApiResult(success: false, message: error);
+      }
+    } on SocketException catch (e) {
+      _log('Network error in getRecentIssues: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getRecentIssues: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
+    } catch (e) {
+      _log('GET RECENT ISSUES ERROR: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to load recent issues. Please try again.',
+      );
+    }
+  }
+
+  /// Get weekly stage counts for stats display
+  /// Uses /api/issue/stats/weekly/stages endpoint
+  static Future<ApiResult<List<WeeklyStageCount>>> getWeeklyStats() async {
+    try {
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.getWeeklyStatsEndpoint}',
+      );
+
+      _log('GET WEEKLY STATS REQUEST: $uri');
+
+      final headers = await _getHeaders();
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'GET WEEKLY STATS RESPONSE: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final stats = data
+            .map(
+              (json) => WeeklyStageCount.fromJson(json as Map<String, dynamic>),
+            )
+            .toList();
+
+        return ApiResult(success: true, data: stats);
+      } else if (response.statusCode == 204) {
+        // No content - empty list
+        return ApiResult(success: true, data: []);
+      } else {
+        final error = _parseError(response.body);
+        return ApiResult(success: false, message: error);
+      }
+    } on SocketException catch (e) {
+      _log('Network error in getWeeklyStats: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getWeeklyStats: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
+    } catch (e) {
+      _log('GET WEEKLY STATS ERROR: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to load weekly stats. Please try again.',
       );
     }
   }

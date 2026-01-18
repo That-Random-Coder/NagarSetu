@@ -44,9 +44,9 @@ class SupervisorService {
     required String password,
   }) async {
     try {
-      // Use unified authentication endpoint (API only has one login endpoint)
+      // Use supervisor-specific login endpoint
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.loginEndpoint}',
+        '${Environment.apiBaseUrl}${Environment.supervisorLoginEndpoint}',
       );
 
       _log('SUPERVISOR LOGIN REQUEST: $uri');
@@ -121,9 +121,9 @@ class SupervisorService {
     double? longitude,
   }) async {
     try {
-      // Use unified authentication endpoint (API only has one registration endpoint)
+      // Use supervisor-specific registration endpoint
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.registerEndpoint}',
+        '${Environment.apiBaseUrl}${Environment.supervisorRegisterEndpoint}',
       );
 
       final body = {
@@ -201,9 +201,9 @@ class SupervisorService {
     String roles = 'SUPERVISOR',
   }) async {
     try {
-      // Use unified authentication endpoint (API only has one getCode endpoint)
+      // Use supervisor-specific getCode endpoint
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.getCodeEndpoint}?email=$email&roles=$roles',
+        '${Environment.apiBaseUrl}${Environment.supervisorGetCodeEndpoint}?email=$email&roles=$roles',
       );
 
       _log('SUPERVISOR GET CODE REQUEST: $uri');

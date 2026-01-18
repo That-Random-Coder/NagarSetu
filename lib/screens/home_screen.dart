@@ -4,7 +4,10 @@ import 'my_issues_screen.dart';
 import 'map_screen.dart';
 import 'profile_screen.dart';
 import '../services/user_service.dart';
+import '../services/issue_service.dart';
 import '../models/leaderboard_entry.dart';
+import '../models/recent_issue_model.dart';
+import '../models/weekly_stats_model.dart';
 import '../navigation/route_observer.dart';
 import '../services/secure_storage_service.dart';
 
@@ -19,6 +22,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   int _currentIndex = 0;
   String _firstName = 'User';
   bool _isLoadingLeaderboard = true;
+  bool _isLoadingRecentIssues = true;
+  bool _isLoadingWeeklyStats = true;
+  List<RecentIssue> _recentIssues = [];
+  List<WeeklyStageCount> _weeklyStats = [];
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -46,6 +53,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     super.initState();
     _loadLeaderboard();
     _loadUserName();
+    _loadRecentIssues();
+    _loadWeeklyStats();
   }
 
   Future<void> _loadUserName() async {
@@ -59,6 +68,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     }
   }
 
+  Future<void> _loadRecentIssues() async {
+    setState(() {
+      _isLoadingRecentIssues = true;
+    });
+    final result = await IssueService.getRecentIssues(size: 10);
+    if (!mounted) return;
+    setState(() {
+      if (result.success && result.data != null) {
+        _recentIssues = result.data!;
+      }
+      _isLoadingRecentIssues = false;
+    });
+  }
+
   Future<void> _loadLeaderboard() async {
     setState(() {
       _isLoadingLeaderboard = true;
@@ -68,6 +91,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     setState(() {
       _leaderboard = entries;
       _isLoadingLeaderboard = false;
+    });
+  }
+
+  Future<void> _loadWeeklyStats() async {
+    setState(() {
+      _isLoadingWeeklyStats = true;
+    });
+    final result = await IssueService.getWeeklyStats();
+    if (!mounted) return;
+    setState(() {
+      if (result.success && result.data != null) {
+        _weeklyStats = result.data!;
+      }
+      _isLoadingWeeklyStats = false;
     });
   }
 
@@ -90,12 +127,14 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   void didPush() {
     // Screen was pushed onto navigation stack
     _loadLeaderboard();
+    _loadRecentIssues();
   }
 
   @override
   void didPopNext() {
     // Returned to this screen (another route popped)
     _loadLeaderboard();
+    _loadRecentIssues();
   }
 
   String _initials(String name) {
@@ -152,34 +191,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       'icon': Icons.emoji_events_outlined,
       'title': 'Earn',
       'desc': 'Get points',
-    },
-  ];
-
-  // Mock data for daily stats
-  final List<Map<String, dynamic>> dailyStats = [
-    {
-      'label': 'Reported',
-      'count': '15',
-      'color': Colors.red,
-      'icon': Icons.report_gmailerrorred,
-    },
-    {
-      'label': 'Assigned',
-      'count': '08',
-      'color': Colors.blue,
-      'icon': Icons.assignment_ind,
-    },
-    {
-      'label': 'In Progress',
-      'count': '05',
-      'color': Colors.orange,
-      'icon': Icons.handyman,
-    },
-    {
-      'label': 'Completed',
-      'count': '12',
-      'color': Colors.green,
-      'icon': Icons.check_circle,
     },
   ];
 
@@ -526,7 +537,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                // Navigate to My Issues screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyIssuesScreen(),
+                  ),
+                );
+              },
               child: Text(
                 'See All',
                 style: TextStyle(color: Colors.blue[600], fontSize: 14),
@@ -537,16 +556,193 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         const SizedBox(height: 12),
         SizedBox(
           height: 160,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: recentIssues.length,
-            itemBuilder: (context, index) {
-              return _buildIssueCard(recentIssues[index]);
-            },
-          ),
+          child: _isLoadingRecentIssues
+              ? _buildRecentIssuesLoading()
+              : _recentIssues.isEmpty
+              ? _buildEmptyRecentIssues()
+              : ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _recentIssues.length,
+                  itemBuilder: (context, index) {
+                    return _buildRecentIssueCard(_recentIssues[index]);
+                  },
+                ),
         ),
       ],
     );
+  }
+
+  Widget _buildRecentIssuesLoading() {
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      itemCount: 3,
+      itemBuilder: (context, index) {
+        return Container(
+          width: 160,
+          margin: const EdgeInsets.only(right: 14),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 14,
+                      width: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 10,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyRecentIssues() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox_outlined, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 8),
+          Text(
+            'No recent issues',
+            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentIssueCard(RecentIssue issue) {
+    return Container(
+      width: 160,
+      margin: const EdgeInsets.only(right: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              image: issue.imageUrl != null && issue.imageUrl!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(issue.imageUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: issue.imageUrl == null || issue.imageUrl!.isEmpty
+                ? Center(
+                    child: Icon(
+                      Icons.image_outlined,
+                      size: 32,
+                      color: Colors.grey[400],
+                    ),
+                  )
+                : null,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  issue.title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _getStatusColorForIssue(issue),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      issue.timeAgo,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColorForIssue(RecentIssue issue) {
+    switch (issue.statusColor) {
+      case StatusColor.green:
+        return Colors.green;
+      case StatusColor.orange:
+        return Colors.orange;
+      case StatusColor.blue:
+        return Colors.blue;
+      case StatusColor.purple:
+        return Colors.purple;
+      case StatusColor.red:
+      default:
+        return Colors.red;
+    }
   }
 
   Widget _buildIssueCard(Map<String, dynamic> issue) {
@@ -625,13 +821,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  // --- NEW: Daily Stats Section ---
+  // --- NEW: Weekly Stats Section ---
   Widget _buildDailyStats() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Daily Stats (Last 24h)',
+          'Weekly Stats (Last 7 days)',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -641,22 +837,32 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         const SizedBox(height: 12),
         SizedBox(
           height: 100, // Fixed height for the stats row
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: dailyStats.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final stat = dailyStats[index];
-              return _buildStatCard(stat);
-            },
-          ),
+          child: _isLoadingWeeklyStats
+              ? const Center(child: CircularProgressIndicator())
+              : _weeklyStats.isEmpty
+              ? Center(
+                  child: Text(
+                    'No stats available',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                )
+              : ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _weeklyStats.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final stat = _weeklyStats[index];
+                    return _buildStatCard(stat);
+                  },
+                ),
         ),
       ],
     );
   }
 
   // --- NEW: Individual Stat Card ---
-  Widget _buildStatCard(Map<String, dynamic> stat) {
+  Widget _buildStatCard(WeeklyStageCount stat) {
     return Container(
       width: 160, // Width for each card
       padding: const EdgeInsets.all(15),
@@ -680,23 +886,23 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                stat['count'],
+                stat.count.toString(),
                 style: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.bold,
-                  color: stat['color'],
+                  color: stat.stageColor,
                 ),
               ),
               Icon(
-                stat['icon'],
-                color: stat['color'].withOpacity(0.6),
+                stat.stageIcon,
+                color: stat.stageColor.withValues(alpha: 0.6),
                 size: 30,
               ),
             ],
           ),
           const SizedBox(height: 5),
           Text(
-            stat['label'],
+            stat.displayLabel,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,

@@ -38,9 +38,9 @@ class WorkerService {
     required String password,
   }) async {
     try {
-      // Use unified authentication endpoint (API only has one login endpoint)
+      // Use worker-specific login endpoint
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.loginEndpoint}',
+        '${Environment.apiBaseUrl}${Environment.workerLoginEndpoint}',
       );
 
       if (Environment.enableLogging) {
@@ -115,9 +115,9 @@ class WorkerService {
     double? longitude,
   }) async {
     try {
-      // Use unified authentication endpoint (API only has one registration endpoint)
+      // Use worker-specific registration endpoint
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.registerEndpoint}',
+        '${Environment.apiBaseUrl}${Environment.workerRegisterEndpoint}',
       );
 
       final body = {
@@ -195,9 +195,9 @@ class WorkerService {
     String roles = 'WORKER',
   }) async {
     try {
-      // Use unified authentication endpoint (API only has one getCode endpoint)
+      // Use worker-specific getCode endpoint
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.getCodeEndpoint}?email=$email&roles=$roles',
+        '${Environment.apiBaseUrl}${Environment.workerGetCodeEndpoint}?email=$email&roles=$roles',
       );
 
       if (Environment.enableLogging) {
