@@ -100,7 +100,6 @@ class UserModel {
   /// Get display role
   String get displayRole {
     if (role == null) return 'Citizen';
-    // Convert CITIZEN to Citizen, DEPARTMENT_HEAD to Department Head, etc.
     return role!
         .split('_')
         .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())

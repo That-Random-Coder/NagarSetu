@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Worker Stage Update</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+            color: white;
+            padding: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .method-badge {
+            display: inline-block;
+            background: #FF9800;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        .endpoint {
+            font-family: 'Courier New', monospace;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 16px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 20px;
+            color: #1976D2;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .description {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #fafafa;
+        }
+        .type {
+            font-family: 'Courier New', monospace;
+            background: #e3f2fd;
+            color: #1565C0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .required {
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .optional {
+            color: #757575;
+            font-size: 12px;
+        }
+        .code-block {
+            background: #263238;
+            color: #aed581;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .code-block .key {
+            color: #80cbc4;
+        }
+        .code-block .string {
+            color: #c5e1a5;
+        }
+        .code-block .comment {
+            color: #78909c;
+        }
+        .enum-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .enum-chip {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .response-code {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .auth-badge {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border-left: 4px solid #c62828;
+            margin-bottom: 20px;
+        }
+        .auth-badge strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .note {
+            background: #fff3e0;
+            color: #e65100;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ff9800;
+            margin-top: 15px;
+        }
+        .note strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        /* Test Form Styles */
+        .test-form {
+            background: #f8f9fa;
+            border: 2px solid #1976D2;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .test-form h3 {
+            color: #1976D2;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1976D2;
+        }
+        .form-group input[type="file"] {
+            padding: 10px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            width: 100%;
+            cursor: pointer;
+        }
+        .form-group input[type="file"]:hover {
+            border-color: #1976D2;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .btn-test {
+            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        .btn-test:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+        }
+        .btn-test:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .response-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .response-status {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .response-status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .response-status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .response-body {
+            background: #263238;
+            color: #aed581;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #1976D2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .base-url-group {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .base-url-group label {
+            color: #1565C0 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🔧 Worker Stage Update API</h1>
+                <p style="opacity: 0.9; margin-bottom: 15px;">Update the stage/status of an issue assigned to a worker</p>
+                <div>
+                    <span class="method-badge">PUT</span>
+                    <span style="font-size: 14px; opacity: 0.9;">worker-controller</span>
+                </div>
+                <div class="endpoint">/api/worker/stage</div>
+            </div>
+
+            <div class="content">
+                <!-- Authentication -->
+                <div class="section">
+                    <div class="auth-badge">
+                        <strong>🔐 Authentication Required</strong>
+                        Bearer Token (JWT) must be included in the Authorization header
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="section">
+                    <h2 class="section-title">Description</h2>
+                    <p class="description">
+                        This endpoint allows workers to update the stage/status of issues assigned to them. 
+                        The worker can transition an issue through various stages from PENDING to RESOLVED. 
+                        An optional proof image can be uploaded along with the status update.
+                    </p>
+                </div>
+
+                <!-- Request Body -->
+                <div class="section">
+                    <h2 class="section-title">Request Body</h2>
+                    <p class="description">Content-Type: <code>multipart/form-data</code></p>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>data</strong></td>
+                                <td><span class="type">WorkerUpdateIssue (JSON)</span></td>
+                                <td><span class="required">Required</span></td>
+                                <td>JSON object containing update details</td>
+                            </tr>
+                            <tr>
+                                <td><strong>file</strong></td>
+                                <td><span class="type">binary</span></td>
+                                <td><span class="optional">Optional</span></td>
+                                <td>Proof image file (JPEG, PNG)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- WorkerUpdateIssue Schema -->
+                <div class="section">
+                    <h2 class="section-title">WorkerUpdateIssue Schema</h2>
+                    <p class="description">The <code>data</code> field must be a JSON string with the following structure:</p>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Property</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>workerId</strong></td>
+                                <td><span class="type">string (UUID)</span></td>
+                                <td><span class="required">Required</span></td>
+                                <td>The unique identifier of the worker</td>
+                            </tr>
+                            <tr>
+                                <td><strong>issueId</strong></td>
+                                <td><span class="type">string (UUID)</span></td>
+                                <td><span class="required">Required</span></td>
+                                <td>The unique identifier of the issue to update</td>
+                            </tr>
+                            <tr>
+                                <td><strong>stages</strong></td>
+                                <td><span class="type">string (enum)</span></td>
+                                <td><span class="required">Required</span></td>
+                                <td>The new stage/status for the issue</td>
+                            </tr>
+                            <tr>
+                                <td><strong>description</strong></td>
+                                <td><span class="type">string</span></td>
+                                <td><span class="optional">Optional</span></td>
+                                <td>Additional notes or remarks about the update</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Stages Enum -->
+                <div class="section">
+                    <h2 class="section-title">Available Stages</h2>
+                    <p class="description">The <code>stages</code> field accepts the following values:</p>
+                    <div class="enum-values">
+                        <span class="enum-chip">PENDING</span>
+                        <span class="enum-chip">ACKNOWLEDGED</span>
+                        <span class="enum-chip">TEAM_ASSIGNED</span>
+                        <span class="enum-chip">IN_PROGRESS</span>
+                        <span class="enum-chip">RESOLVED</span>
+                        <span class="enum-chip">RECONSIDERED</span>
+                    </div>
+                </div>
+
+                <!-- Example Request -->
+                <div class="section">
+                    <h2 class="section-title">Example Request</h2>
+                    
+                    <h3 style="font-size: 16px; color: #666; margin: 15px 0 10px;">Headers:</h3>
+                    <div class="code-block">
+<span class="key">Authorization:</span> <span class="string">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
+<span class="key">Content-Type:</span> <span class="string">multipart/form-data</span>
+                    </div>
+
+                    <h3 style="font-size: 16px; color: #666; margin: 15px 0 10px;">Body (multipart/form-data):</h3>
+                    <div class="code-block">
+<span class="comment">// Field: data (JSON string)</span>
+{
+    <span class="key">"workerId"</span>: <span class="string">"550e8400-e29b-41d4-a716-446655440000"</span>,
+    <span class="key">"issueId"</span>: <span class="string">"7c9e6679-7425-40de-944b-e07fc1f90ae7"</span>,
+    <span class="key">"stages"</span>: <span class="string">"IN_PROGRESS"</span>,
+    <span class="key">"description"</span>: <span class="string">"Started working on the issue. Estimated completion in 2 hours."</span>
+}
+
+<span class="comment">// Field: file (optional)</span>
+<span class="comment">// Binary image file (e.g., proof_of_work.jpg)</span>
+                    </div>
+                </div>
+
+                <!-- cURL Example -->
+                <div class="section">
+                    <h2 class="section-title">cURL Example</h2>
+                    <div class="code-block">
+curl -X PUT "https://your-api-server.com/api/worker/stage" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F 'data={"workerId":"550e8400-e29b-41d4-a716-446655440000","issueId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","stages":"RESOLVED","description":"Issue has been fixed"}' \
+  -F "file=@/path/to/proof_image.jpg"
+                    </div>
+                </div>
+
+                <!-- Response -->
+                <div class="section">
+                    <h2 class="section-title">Response</h2>
+                    
+                    <p style="margin-bottom: 15px;">
+                        <span class="response-code">200</span>
+                        <strong>OK</strong> - Stage updated successfully
+                    </p>
+                    
+                    <p class="description">Returns the updated stage as a string:</p>
+                    <div class="code-block">
+<span class="string">"IN_PROGRESS"</span>
+                    </div>
+
+                    <div class="note">
+                        <strong>📝 Note</strong>
+                        The response returns the new stage value as a plain string (one of the enum values).
+                    </div>
+                </div>
+
+                <!-- Error Responses -->
+                <div class="section">
+                    <h2 class="section-title">Error Responses</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Status Code</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="response-code" style="background: #f44336;">400</span></td>
+                                <td>Bad Request - Invalid request body or missing required fields</td>
+                            </tr>
+                            <tr>
+                                <td><span class="response-code" style="background: #f44336;">401</span></td>
+                                <td>Unauthorized - Missing or invalid Bearer token</td>
+                            </tr>
+                            <tr>
+                                <td><span class="response-code" style="background: #f44336;">403</span></td>
+                                <td>Forbidden - Worker not authorized to update this issue</td>
+                            </tr>
+                            <tr>
+                                <td><span class="response-code" style="background: #f44336;">404</span></td>
+                                <td>Not Found - Issue or Worker not found</td>
+                            </tr>
+                            <tr>
+                                <td><span class="response-code" style="background: #f44336;">500</span></td>
+                                <td>Internal Server Error - Server-side error occurred</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- API Test Form -->
+                <div class="section">
+                    <h2 class="section-title">🧪 Test API Endpoint</h2>
+                    <p class="description">Use this form to test the endpoint directly from your browser.</p>
+                    
+                    <div class="test-form">
+                        <h3>🚀 Send Request</h3>
+                        
+                        <!-- Base URL -->
+                        <div class="form-group base-url-group">
+                            <label for="baseUrl">Base URL</label>
+                            <input type="text" id="baseUrl" value="http://localhost:7889" placeholder="https://your-api-server.com">
+                        </div>
+                        
+                        <!-- JWT Token -->
+                        <div class="form-group">
+                            <label for="jwtToken">🔐 JWT Token (Bearer)</label>
+                            <textarea id="jwtToken" rows="3" placeholder="Paste your JWT token here (without 'Bearer ' prefix)"></textarea>
+                        </div>
+                        
+                        <!-- DTO Fields -->
+                        <h4 style="color: #1976D2; margin-bottom: 15px; margin-top: 10px;">📋 DTO (WorkerUpdateIssue)</h4>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="workerId">Worker ID <span class="required">*</span></label>
+                                <input type="text" id="workerId" placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6">
+                            </div>
+                            <div class="form-group">
+                                <label for="issueId">Issue ID <span class="required">*</span></label>
+                                <input type="text" id="issueId" placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="stages">Stage <span class="required">*</span></label>
+                                <select id="stages">
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                                    <option value="TEAM_ASSIGNED">TEAM_ASSIGNED</option>
+                                    <option value="IN_PROGRESS" selected>IN_PROGRESS</option>
+                                    <option value="RESOLVED">RESOLVED</option>
+                                    <option value="RECONSIDERED">RECONSIDERED</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="description">Description <span class="optional">(Optional)</span></label>
+                                <input type="text" id="description" placeholder="Status update description...">
+                            </div>
+                        </div>
+                        
+                        <!-- File Upload -->
+                        <div class="form-group">
+                            <label for="proofFile">📎 Proof Image <span class="optional">(Optional)</span></label>
+                            <input type="file" id="proofFile" accept="image/*">
+                        </div>
+                        
+                        <!-- Request Preview -->
+                        <div class="form-group">
+                            <label>📤 Request Body Preview</label>
+                            <div class="code-block" id="requestPreview" style="max-height: 150px; overflow-y: auto;">
+{
+  "dto": {
+    "workerId": "",
+    "issueId": "",
+    "stages": "IN_PROGRESS",
+    "description": ""
+  },
+  "file": null
+}
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <button class="btn-test" id="btnSubmit" onclick="sendRequest()">
+                            ▶️ Send PUT Request
+                        </button>
+                        
+                        <!-- Loading -->
+                        <div class="loading" id="loading"></div>
+                        
+                        <!-- Response Container -->
+                        <div class="response-container" id="responseContainer">
+                            <div class="response-header">
+                                <strong>Response</strong>
+                                <span class="response-status" id="responseStatus"></span>
+                            </div>
+                            <div class="response-body" id="responseBody"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flutter/Dart Example -->
+                <div class="section">
+                    <h2 class="section-title">Flutter/Dart Implementation</h2>
+                    <div class="code-block">
+<span class="comment">// Using http package with MultipartRequest</span>
+<span class="key">static Future</span>&lt;ApiResult&lt;String&gt;&gt; <span class="key">updateStage</span>({
+  <span class="key">required</span> String issueId,
+  <span class="key">required</span> String stage,
+  String? description,
+  File? proofImage,
+}) <span class="key">async</span> {
+  <span class="key">final</span> workerId = <span class="key">await</span> SecureStorageService.getUserId();
+  <span class="key">final</span> token = <span class="key">await</span> SecureStorageService.getToken();
+  
+  <span class="key">final</span> uri = Uri.parse(<span class="string">'https://api-server.com/api/worker/stage'</span>);
+  <span class="key">final</span> request = http.MultipartRequest(<span class="string">'PUT'</span>, uri);
+  
+  request.headers[<span class="string">'Authorization'</span>] = <span class="string">'Bearer $token'</span>;
+  
+  <span class="key">final</span> workerUpdateIssue = {
+    <span class="string">'workerId'</span>: workerId,
+    <span class="string">'issueId'</span>: issueId,
+    <span class="string">'stages'</span>: stage.toUpperCase(),
+    <span class="key">if</span> (description != <span class="key">null</span>) <span class="string">'description'</span>: description,
+  };
+  
+  request.fields[<span class="string">'data'</span>] = jsonEncode(workerUpdateIssue);
+  
+  <span class="key">if</span> (proofImage != <span class="key">null</span>) {
+    request.files.add(
+      <span class="key">await</span> http.MultipartFile.fromPath(<span class="string">'file'</span>, proofImage.path),
+    );
+  }
+  
+  <span class="key">final</span> response = <span class="key">await</span> request.send();
+  <span class="comment">// Handle response...</span>
+}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: white; margin-top: 30px; opacity: 0.8;">
+            NagarSetu API Documentation • Worker Controller • v1.0
+        </p>
+    </div>
+
+    <script>
+        // Update request preview on input change
+        function updatePreview() {
+            const dto = {
+                workerId: document.getElementById('workerId').value || '',
+                issueId: document.getElementById('issueId').value || '',
+                stages: document.getElementById('stages').value,
+                description: document.getElementById('description').value || ''
+            };
+            
+            const fileInput = document.getElementById('proofFile');
+            const fileName = fileInput.files.length > 0 ? fileInput.files[0].name : null;
+            
+            const requestBody = {
+                dto: dto,
+                file: fileName
+            };
+            
+            document.getElementById('requestPreview').textContent = JSON.stringify(requestBody, null, 2);
+        }
+        
+        // Add event listeners for live preview
+        document.getElementById('workerId').addEventListener('input', updatePreview);
+        document.getElementById('issueId').addEventListener('input', updatePreview);
+        document.getElementById('stages').addEventListener('change', updatePreview);
+        document.getElementById('description').addEventListener('input', updatePreview);
+        document.getElementById('proofFile').addEventListener('change', updatePreview);
+        
+        // Send the API request
+        async function sendRequest() {
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            const token = document.getElementById('jwtToken').value.trim();
+            const workerId = document.getElementById('workerId').value.trim();
+            const issueId = document.getElementById('issueId').value.trim();
+            const stages = document.getElementById('stages').value;
+            const description = document.getElementById('description').value.trim();
+            const fileInput = document.getElementById('proofFile');
+            
+            // Validation
+            if (!baseUrl) {
+                alert('Please enter the Base URL');
+                return;
+            }
+            if (!token) {
+                alert('Please enter the JWT Token');
+                return;
+            }
+            if (!workerId) {
+                alert('Please enter the Worker ID');
+                return;
+            }
+            if (!issueId) {
+                alert('Please enter the Issue ID');
+                return;
+            }
+            
+            // Build the DTO object
+            const dto = {
+                workerId: workerId,
+                issueId: issueId,
+                stages: stages,
+                description: description
+            };
+            
+            // Create FormData for multipart request
+            const formData = new FormData();
+            
+            // Add the dto as a JSON blob with content type
+            const dtoBlob = new Blob([JSON.stringify(dto)], { type: 'application/json' });
+            formData.append('dto', dtoBlob);
+            
+            // Add file if selected
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+            
+            // Show loading, hide response
+            document.getElementById('btnSubmit').disabled = true;
+            document.getElementById('btnSubmit').textContent = '⏳ Sending...';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('responseContainer').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/worker/stage`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                
+                try {
+                    responseData = JSON.parse(responseText);
+                    responseData = JSON.stringify(responseData, null, 2);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                // Show response
+                document.getElementById('responseContainer').style.display = 'block';
+                document.getElementById('responseStatus').textContent = `${response.status} ${response.statusText}`;
+                document.getElementById('responseStatus').className = 'response-status ' + (response.ok ? 'success' : 'error');
+                document.getElementById('responseBody').textContent = responseData || '(Empty response)';
+                
+            } catch (error) {
+                document.getElementById('responseContainer').style.display = 'block';
+                document.getElementById('responseStatus').textContent = 'Network Error';
+                document.getElementById('responseStatus').className = 'response-status error';
+                document.getElementById('responseBody').textContent = `Error: ${error.message}\n\nThis could be due to:\n- CORS restrictions (try using a browser extension or run from same origin)\n- Server not running\n- Invalid URL`;
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('btnSubmit').disabled = false;
+                document.getElementById('btnSubmit').textContent = '▶️ Send PUT Request';
+            }
+        }
+    </script>
+</body>
+</html>

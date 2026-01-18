@@ -23,15 +23,12 @@ class _MapScreenState extends State<MapScreen> {
   String? _error;
   bool _isLoadingLocation = true;
 
-  // View mode: 'stage' or 'criticality'
   String _viewMode = 'stage';
 
-  // Default to Delhi, will be updated with user's location
   LatLng _userLocation = const LatLng(28.6120, 77.2050);
   LatLng _currentCenter = const LatLng(28.6120, 77.2050);
   double _currentZoom = 13.5;
 
-  // Get color based on current view mode
   Color _getMarkerColor(IssueMapModel issue) {
     if (_viewMode == 'criticality') {
       return _getCriticalityColor(issue.criticality);
@@ -95,7 +92,6 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     try {
-      // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('[MapScreen] Location services are disabled');
@@ -103,7 +99,6 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      // Check and request permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -120,7 +115,6 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      // Get current position
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -139,7 +133,6 @@ class _MapScreenState extends State<MapScreen> {
           _isLoadingLocation = false;
         });
 
-        // Move map to user location
         _mapController.move(_userLocation, 14.0);
       }
     } catch (e) {
@@ -168,9 +161,7 @@ class _MapScreenState extends State<MapScreen> {
           _issues = result.data!;
           debugPrint('[MapScreen] Loaded ${_issues.length} issues');
 
-          // If we have issues and got location, center on first issue or user location
           if (_issues.isNotEmpty) {
-            // Move to first issue location if available
             final firstIssue = _issues.first;
             if (firstIssue.latitude != 0 && firstIssue.longitude != 0) {
               _mapController.move(
@@ -196,9 +187,8 @@ class _MapScreenState extends State<MapScreen> {
     final results = await IssueService.testApiConnection();
 
     if (!mounted) return;
-    Navigator.pop(context); // Close loading dialog
+    Navigator.pop(context);
 
-    // Build issue locations string
     String issueLocations = _issues.isEmpty
         ? 'No issues'
         : _issues
@@ -352,7 +342,6 @@ class _MapScreenState extends State<MapScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.nagarsetu.app',
               ),
-              // User location marker
               MarkerLayer(
                 markers: [
                   Marker(
@@ -494,7 +483,6 @@ class _MapScreenState extends State<MapScreen> {
                 ],
               ),
             ),
-          // Show empty state when no issues
           if (!_isLoading && _error == null && _issues.isEmpty)
             Positioned(
               bottom: 200,

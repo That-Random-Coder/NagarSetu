@@ -1,9 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../services/issue_service.dart';
-import 'in_app_camera.dart'; // Import your custom camera
+import '../services/worker_service.dart';
+import 'in_app_camera.dart';
 
 class UpdateWorkPage extends StatefulWidget {
   final String taskTitle;
@@ -106,10 +105,36 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
 
   bool _isSubmitting = false;
 
+  /// Convert display status to API stage enum
+  String _getApiStage(String displayStatus) {
+    switch (displayStatus) {
+      case 'Pending':
+        return 'PENDING';
+      case 'In Progress':
+        return 'IN_PROGRESS';
+      case 'Resolved':
+        return 'RESOLVED';
+      case 'On Hold':
+        return 'RECONSIDERED';
+      default:
+        return 'PENDING';
+    }
+  }
+
   Future<void> _submitUpdate() async {
     if (_formKey.currentState!.validate()) {
+      if (widget.issueId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Issue ID is missing. Cannot update status."),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       // Validation: Proof is required if Status is "Resolved"
-      // Proof is NOT required if Status is "Pending" (or In Progress/On Hold)
       if (_selectedStatus == 'Resolved' && _selectedImage == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -121,53 +146,45 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
         return;
       }
 
-      // If resolving an issue, call the API
-      if (_selectedStatus == 'Resolved' &&
-          widget.issueId != null &&
-          _selectedImage != null) {
-        setState(() => _isSubmitting = true);
+      setState(() => _isSubmitting = true);
 
-        final result = await IssueService.markIssueDone(
-          issueId: widget.issueId!,
-          completionImage: _selectedImage!,
-        );
+      final stage = _getApiStage(_selectedStatus!);
+      final remarks = _remarksController.text.trim();
 
-        if (!mounted) return;
+      final result = await WorkerService.updateStage(
+        issueId: widget.issueId!,
+        stage: stage,
+        description: remarks.isNotEmpty ? remarks : null,
+        proofImage: _selectedImage,
+      );
 
-        setState(() => _isSubmitting = false);
+      if (!mounted) return;
 
-        if (result.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Issue marked as resolved successfully!"),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          Navigator.pop(context, true); // Return true to indicate success
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                result.message ?? "Failed to update issue. Please try again.",
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } else {
-        // For non-resolve status updates (not yet implemented in API)
+      setState(() => _isSubmitting = false);
+
+      if (result.success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Status update recorded."),
+          SnackBar(
+            content: Text(
+              _selectedStatus == 'Resolved'
+                  ? "Issue marked as resolved successfully!"
+                  : "Status updated to $_selectedStatus successfully!",
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) Navigator.pop(context);
-        });
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message ?? "Failed to update status. Please try again.",
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

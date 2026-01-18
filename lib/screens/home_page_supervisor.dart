@@ -79,10 +79,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// TAB A: DASHBOARD (WITH API INTEGRATION)
-// ---------------------------------------------------------------------------
-
 class _AdminDashboardTab extends StatefulWidget {
   const _AdminDashboardTab();
 
@@ -694,10 +690,6 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// TAB B: ISSUES (WITH API INTEGRATION)
-// ---------------------------------------------------------------------------
-
 class _AdminIssuesTab extends StatefulWidget {
   const _AdminIssuesTab();
 
@@ -976,8 +968,6 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-
-          // --- Assign/Reassign Button ---
           SizedBox(
             width: double.infinity,
             child: hasAssignee
@@ -993,7 +983,7 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
                                 : issue.type,
                           ),
                         ),
-                      ).then((_) => _loadIssues()); // Refresh on return
+                      ).then((_) => _loadIssues());
                     },
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFF1976D2)),
@@ -1022,7 +1012,7 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
                                 : issue.type,
                           ),
                         ),
-                      ).then((_) => _loadIssues()); // Refresh on return
+                      ).then((_) => _loadIssues());
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1976D2),
@@ -1046,23 +1036,14 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// TAB C: MAP (UNCHANGED VISUAL)
-// ---------------------------------------------------------------------------
-
 class _AdminMapTab extends StatelessWidget {
   const _AdminMapTab();
 
   @override
   Widget build(BuildContext context) {
-    // Use the full-featured SupervisorMapScreen with filter capabilities
     return const SupervisorMapScreen();
   }
 }
-
-// ---------------------------------------------------------------------------
-// TAB D: PROFILE (WITH API INTEGRATION)
-// ---------------------------------------------------------------------------
 
 class _AdminProfileTab extends StatefulWidget {
   const _AdminProfileTab();
@@ -1102,7 +1083,6 @@ class _AdminProfileTabState extends State<_AdminProfileTab> {
   }
 
   Future<void> _handleLogout() async {
-    // Show confirmation dialog
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1124,10 +1104,8 @@ class _AdminProfileTabState extends State<_AdminProfileTab> {
     );
 
     if (shouldLogout == true && mounted) {
-      // Perform logout
       await SupervisorService.logout();
 
-      // Navigate to login screen
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,

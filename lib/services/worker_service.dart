@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../config/environment.dart';
 import '../models/worker_models.dart';
 import 'secure_storage_service.dart';
@@ -38,7 +39,6 @@ class WorkerService {
     required String password,
   }) async {
     try {
-      // Use worker-specific login endpoint
       final uri = Uri.parse(
         '${Environment.apiBaseUrl}${Environment.workerLoginEndpoint}',
       );
@@ -65,7 +65,6 @@ class WorkerService {
         final data = jsonDecode(response.body);
         final loginResponse = WorkerLoginResponse.fromJson(data);
 
-        // Save user data to secure storage with worker status
         await SecureStorageService.saveUserData(
           token: loginResponse.token,
           userId: loginResponse.id,
@@ -74,7 +73,6 @@ class WorkerService {
           isWorker: true,
         );
 
-        // Store worker started status
         await SecureStorageService.setWorkerStarted(loginResponse.started);
 
         return ApiResult(success: true, data: loginResponse);
@@ -115,7 +113,6 @@ class WorkerService {
     double? longitude,
   }) async {
     try {
-      // Use worker-specific registration endpoint
       final uri = Uri.parse(
         '${Environment.apiBaseUrl}${Environment.workerRegisterEndpoint}',
       );
@@ -153,7 +150,6 @@ class WorkerService {
         final data = jsonDecode(response.body);
         final registerResponse = WorkerRegisterResponse.fromJson(data);
 
-        // Save basic auth data with worker status
         await SecureStorageService.saveUserData(
           token: registerResponse.token,
           userId: registerResponse.id,
@@ -162,7 +158,6 @@ class WorkerService {
           isWorker: true,
         );
 
-        // Store worker started status
         await SecureStorageService.setWorkerStarted(registerResponse.started);
 
         return ApiResult(success: true, data: registerResponse);
@@ -195,7 +190,6 @@ class WorkerService {
     String roles = 'WORKER',
   }) async {
     try {
-      // Use worker-specific getCode endpoint
       final uri = Uri.parse(
         '${Environment.apiBaseUrl}${Environment.workerGetCodeEndpoint}?email=$email&roles=$roles',
       );
@@ -244,30 +238,31 @@ class WorkerService {
   }
 
   /// Mark an issue as done (resolved) with proof image
+  /// API: POST /api/issue/done?id={issueId} with file in body
   static Future<ApiResult<bool>> markIssueDone({
     required String issueId,
     required File imageFile,
   }) async {
     try {
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.markIssueDoneEndpoint}?id=$issueId',
-      );
+        '${Environment.apiBaseUrl}${Environment.markIssueDoneEndpoint}',
+      ).replace(queryParameters: {'id': issueId});
 
       if (Environment.enableLogging) {
         print('MARK ISSUE DONE REQUEST: $uri');
       }
 
-      final headers = await _authHeaders;
+      final token = await SecureStorageService.getToken();
 
-      // Create multipart request
       final request = http.MultipartRequest('POST', uri);
-      request.headers.addAll(headers);
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
 
-      // Add image file
       final imageBytes = await imageFile.readAsBytes();
       request.files.add(
         http.MultipartFile.fromBytes(
-          'image',
+          'file',
           imageBytes,
           filename: 'proof_${DateTime.now().millisecondsSinceEpoch}.jpg',
         ),
@@ -313,6 +308,303 @@ class WorkerService {
     }
   }
 
+  /// Get assigned issues for worker
+  /// API: GET /api/worker/issues/assigned?workerId={workerId}
+  static Future<ApiResult<List<IssueForWorkerDto>>> getAssignedIssues() async {
+    try {
+      final workerId = await SecureStorageService.getUserId();
+      if (workerId == null || workerId.isEmpty) {
+        return ApiResult(
+          success: false,
+          message: 'Worker ID not found. Please login again.',
+        );
+      }
+
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.workerAssignedIssuesEndpoint}',
+      ).replace(queryParameters: {'workerId': workerId});
+
+      if (Environment.enableLogging) {
+        print('GET ASSIGNED ISSUES REQUEST: $uri');
+      }
+
+      final headers = await _authHeaders;
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      if (Environment.enableLogging) {
+        print(
+          'GET ASSIGNED ISSUES RESPONSE: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        List<dynamic> content;
+        if (data is List) {
+          content = data;
+        } else if (data is Map && data.containsKey('content')) {
+          content = data['content'] as List<dynamic>;
+        } else {
+          content = [];
+        }
+
+        final issues = content
+            .map(
+              (json) =>
+                  IssueForWorkerDto.fromJson(json as Map<String, dynamic>),
+            )
+            .toList();
+
+        return ApiResult(success: true, data: issues);
+      } else {
+        final errorMsg = _parseErrorMessage(response.body);
+        return ApiResult(
+          success: false,
+          message: errorMsg ?? 'Failed to load assigned issues.',
+        );
+      }
+    } on SocketException {
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } catch (e) {
+      if (Environment.enableLogging) {
+        print('GET ASSIGNED ISSUES ERROR: $e');
+      }
+      return ApiResult(
+        success: false,
+        message: 'An error occurred. Please try again.',
+      );
+    }
+  }
+
+  /// Start working on an issue
+  /// API: PUT /api/worker/issues/{issueId}/start?workerId={workerId}
+  static Future<ApiResult<bool>> startIssue({required String issueId}) async {
+    try {
+      final workerId = await SecureStorageService.getUserId();
+      if (workerId == null || workerId.isEmpty) {
+        return ApiResult(
+          success: false,
+          message: 'Worker ID not found. Please login again.',
+        );
+      }
+
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.workerIssuesEndpoint}/$issueId/start',
+      ).replace(queryParameters: {'workerId': workerId});
+
+      if (Environment.enableLogging) {
+        print('START ISSUE REQUEST: $uri');
+      }
+
+      final headers = await _authHeaders;
+      final response = await _client
+          .put(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      if (Environment.enableLogging) {
+        print(
+          'START ISSUE RESPONSE: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (response.statusCode == 200) {
+        return ApiResult(
+          success: true,
+          data: true,
+          message: 'Issue started successfully.',
+        );
+      } else {
+        final errorMsg = _parseErrorMessage(response.body);
+        return ApiResult(
+          success: false,
+          message: errorMsg ?? 'Failed to start issue. Please try again.',
+        );
+      }
+    } on SocketException {
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } catch (e) {
+      if (Environment.enableLogging) {
+        print('START ISSUE ERROR: $e');
+      }
+      return ApiResult(
+        success: false,
+        message: 'An error occurred. Please try again.',
+      );
+    }
+  }
+
+  /// Resolve an issue
+  /// API: PUT /api/worker/issues/{issueId}/resolve?workerId={workerId}
+  static Future<ApiResult<bool>> resolveIssue({required String issueId}) async {
+    try {
+      final workerId = await SecureStorageService.getUserId();
+      if (workerId == null || workerId.isEmpty) {
+        return ApiResult(
+          success: false,
+          message: 'Worker ID not found. Please login again.',
+        );
+      }
+
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.workerIssuesEndpoint}/$issueId/resolve',
+      ).replace(queryParameters: {'workerId': workerId});
+
+      if (Environment.enableLogging) {
+        print('RESOLVE ISSUE REQUEST: $uri');
+      }
+
+      final headers = await _authHeaders;
+      final response = await _client
+          .put(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      if (Environment.enableLogging) {
+        print(
+          'RESOLVE ISSUE RESPONSE: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (response.statusCode == 200) {
+        return ApiResult(
+          success: true,
+          data: true,
+          message: 'Issue resolved successfully.',
+        );
+      } else {
+        final errorMsg = _parseErrorMessage(response.body);
+        return ApiResult(
+          success: false,
+          message: errorMsg ?? 'Failed to resolve issue. Please try again.',
+        );
+      }
+    } on SocketException {
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } catch (e) {
+      if (Environment.enableLogging) {
+        print('RESOLVE ISSUE ERROR: $e');
+      }
+      return ApiResult(
+        success: false,
+        message: 'An error occurred. Please try again.',
+      );
+    }
+  }
+
+  /// Update issue stage with optional proof image
+  /// API: PUT /api/worker/stage with WorkerUpdateIssue body + optional file
+  /// Stages: PENDING, ACKNOWLEDGED, TEAM_ASSIGNED, IN_PROGRESS, RESOLVED, RECONSIDERED
+  static Future<ApiResult<String>> updateStage({
+    required String issueId,
+    required String stage,
+    String? description,
+    File? proofImage,
+  }) async {
+    try {
+      final workerId = await SecureStorageService.getUserId();
+      if (workerId == null || workerId.isEmpty) {
+        return ApiResult(
+          success: false,
+          message: 'Worker ID not found. Please login again.',
+        );
+      }
+
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.workerStageEndpoint}',
+      );
+
+      if (Environment.enableLogging) {
+        print('UPDATE STAGE REQUEST: $uri');
+        print('Stage: $stage, IssueId: $issueId, WorkerId: $workerId');
+      }
+
+      final token = await SecureStorageService.getToken();
+
+      final request = http.MultipartRequest('PUT', uri);
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.headers['Accept'] = 'application/json';
+
+      final workerUpdateIssue = {
+        'workerId': workerId,
+        'issueId': issueId,
+        'stages': stage.toUpperCase(),
+        if (description != null && description.isNotEmpty)
+          'description': description,
+      };
+
+      // Send dto as a JSON blob with application/json content type (matching HTML implementation)
+      final dtoJson = jsonEncode(workerUpdateIssue);
+      request.files.add(
+        http.MultipartFile.fromString(
+          'dto',
+          dtoJson,
+          contentType: MediaType('application', 'json'),
+        ),
+      );
+
+      if (proofImage != null) {
+        final imageBytes = await proofImage.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            imageBytes,
+            filename: 'proof_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(
+        Duration(seconds: Environment.requestTimeout),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (Environment.enableLogging) {
+        print(
+          'UPDATE STAGE RESPONSE: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (response.statusCode == 200) {
+        return ApiResult(
+          success: true,
+          data: response.body,
+          message: 'Stage updated successfully.',
+        );
+      } else {
+        final errorMsg = _parseErrorMessage(response.body);
+        return ApiResult(
+          success: false,
+          message: errorMsg ?? 'Failed to update stage. Please try again.',
+        );
+      }
+    } on SocketException {
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } catch (e) {
+      if (Environment.enableLogging) {
+        print('UPDATE STAGE ERROR: $e');
+      }
+      return ApiResult(
+        success: false,
+        message: 'An error occurred. Please try again.',
+      );
+    }
+  }
+
   /// Get recent issues for dashboard
   static Future<ApiResult<List<RecentIssue>>> getRecentIssues() async {
     try {
@@ -338,7 +630,6 @@ class WorkerService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Handle paginated response
         List<dynamic> content;
         if (data is Map && data.containsKey('content')) {
           content = data['content'] as List<dynamic>;

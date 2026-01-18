@@ -11,6 +11,55 @@
                     }
                 ],
     "paths":  {
+                  "/api/worker/stage":  {
+                                            "put":  {
+                                                        "tags":  [
+                                                                     "worker-controller"
+                                                                 ],
+                                                        "operationId":  "updateStage",
+                                                        "requestBody":  {
+                                                                            "content":  {
+                                                                                            "application/json":  {
+                                                                                                                     "schema":  {
+                                                                                                                                    "type":  "object",
+                                                                                                                                    "properties":  {
+                                                                                                                                                       "data":  {
+                                                                                                                                                                    "$ref":  "#/components/schemas/WorkerUpdateIssue"
+                                                                                                                                                                },
+                                                                                                                                                       "file":  {
+                                                                                                                                                                    "type":  "string",
+                                                                                                                                                                    "format":  "binary"
+                                                                                                                                                                }
+                                                                                                                                                   },
+                                                                                                                                    "required":  [
+                                                                                                                                                     "data"
+                                                                                                                                                 ]
+                                                                                                                                }
+                                                                                                                 }
+                                                                                        }
+                                                                        },
+                                                        "responses":  {
+                                                                          "200":  {
+                                                                                      "description":  "OK",
+                                                                                      "content":  {
+                                                                                                      "*/*":  {
+                                                                                                                  "schema":  {
+                                                                                                                                 "type":  "string",
+                                                                                                                                 "enum":  [
+                                                                                                                                              "PENDING",
+                                                                                                                                              "ACKNOWLEDGED",
+                                                                                                                                              "TEAM_ASSIGNED",
+                                                                                                                                              "IN_PROGRESS",
+                                                                                                                                              "RESOLVED",
+                                                                                                                                              "RECONSIDERED"
+                                                                                                                                          ]
+                                                                                                                             }
+                                                                                                              }
+                                                                                                  }
+                                                                                  }
+                                                                      }
+                                                    }
+                                        },
                   "/api/worker/issues/{issueId}/start":  {
                                                              "put":  {
                                                                          "tags":  [
@@ -673,6 +722,40 @@
                                                                              }
                                                            }
                                                },
+                  "/api/supervisior/{supervisiorId}/workers":  {
+                                                                   "get":  {
+                                                                               "tags":  [
+                                                                                            "super-visior-controller"
+                                                                                        ],
+                                                                               "operationId":  "getAllWorkersForSupervisior",
+                                                                               "parameters":  [
+                                                                                                  {
+                                                                                                      "name":  "supervisiorId",
+                                                                                                      "in":  "path",
+                                                                                                      "required":  true,
+                                                                                                      "schema":  {
+                                                                                                                     "type":  "string",
+                                                                                                                     "format":  "uuid"
+                                                                                                                 }
+                                                                                                  }
+                                                                                              ],
+                                                                               "responses":  {
+                                                                                                 "200":  {
+                                                                                                             "description":  "OK",
+                                                                                                             "content":  {
+                                                                                                                             "*/*":  {
+                                                                                                                                         "schema":  {
+                                                                                                                                                        "type":  "array",
+                                                                                                                                                        "items":  {
+                                                                                                                                                                      "$ref":  "#/components/schemas/Worker"
+                                                                                                                                                                  }
+                                                                                                                                                    }
+                                                                                                                                     }
+                                                                                                                         }
+                                                                                                         }
+                                                                                             }
+                                                                           }
+                                                               },
                   "/api/supervisior/{id}":  {
                                                 "get":  {
                                                             "tags":  [
@@ -1156,10 +1239,57 @@
                                                                                                 }
                                                                                     }
                                                                   }
-                                                      }
+                                                      },
+                  "/api/admin/issues/stats/30days":  {
+                                                         "get":  {
+                                                                     "tags":  [
+                                                                                  "admin-controller"
+                                                                              ],
+                                                                     "operationId":  "getIssue30DayStats",
+                                                                     "responses":  {
+                                                                                       "200":  {
+                                                                                                   "description":  "OK",
+                                                                                                   "content":  {
+                                                                                                                   "*/*":  {
+                                                                                                                               "schema":  {
+                                                                                                                                              "$ref":  "#/components/schemas/Issue30DayStatsDto"
+                                                                                                                                          }
+                                                                                                                           }
+                                                                                                               }
+                                                                                               }
+                                                                                   }
+                                                                 }
+                                                     }
               },
     "components":  {
                        "schemas":  {
+                                       "WorkerUpdateIssue":  {
+                                                                 "type":  "object",
+                                                                 "properties":  {
+                                                                                    "workerId":  {
+                                                                                                     "type":  "string",
+                                                                                                     "format":  "uuid"
+                                                                                                 },
+                                                                                    "issueId":  {
+                                                                                                    "type":  "string",
+                                                                                                    "format":  "uuid"
+                                                                                                },
+                                                                                    "stages":  {
+                                                                                                   "type":  "string",
+                                                                                                   "enum":  [
+                                                                                                                "PENDING",
+                                                                                                                "ACKNOWLEDGED",
+                                                                                                                "TEAM_ASSIGNED",
+                                                                                                                "IN_PROGRESS",
+                                                                                                                "RESOLVED",
+                                                                                                                "RECONSIDERED"
+                                                                                                            ]
+                                                                                               },
+                                                                                    "description":  {
+                                                                                                        "type":  "string"
+                                                                                                    }
+                                                                                }
+                                                             },
                                        "RegistrationRequestDto":  {
                                                                       "type":  "object",
                                                                       "properties":  {
@@ -1486,6 +1616,204 @@
                                                                                                }
                                                                                  }
                                                               },
+                                       "Issue":  {
+                                                     "type":  "object",
+                                                     "properties":  {
+                                                                        "id":  {
+                                                                                   "type":  "string",
+                                                                                   "format":  "uuid"
+                                                                               },
+                                                                        "title":  {
+                                                                                      "type":  "string"
+                                                                                  },
+                                                                        "issueType":  {
+                                                                                          "type":  "string",
+                                                                                          "enum":  [
+                                                                                                       "ROAD",
+                                                                                                       "WATER",
+                                                                                                       "GARBAGE",
+                                                                                                       "VEHICLE",
+                                                                                                       "STREETLIGHT",
+                                                                                                       "OTHER"
+                                                                                                   ]
+                                                                                      },
+                                                                        "description":  {
+                                                                                            "type":  "string"
+                                                                                        },
+                                                                        "criticality":  {
+                                                                                            "type":  "string",
+                                                                                            "enum":  [
+                                                                                                         "LOW",
+                                                                                                         "MEDIUM",
+                                                                                                         "HIGH"
+                                                                                                     ]
+                                                                                        },
+                                                                        "location":  {
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                        "latitude":  {
+                                                                                         "type":  "number",
+                                                                                         "format":  "double"
+                                                                                     },
+                                                                        "longitude":  {
+                                                                                          "type":  "number",
+                                                                                          "format":  "double"
+                                                                                      },
+                                                                        "stages":  {
+                                                                                       "type":  "string",
+                                                                                       "enum":  [
+                                                                                                    "PENDING",
+                                                                                                    "ACKNOWLEDGED",
+                                                                                                    "TEAM_ASSIGNED",
+                                                                                                    "IN_PROGRESS",
+                                                                                                    "RESOLVED",
+                                                                                                    "RECONSIDERED"
+                                                                                                ]
+                                                                                   },
+                                                                        "submittedBy":  {
+                                                                                            "$ref":  "#/components/schemas/User"
+                                                                                        },
+                                                                        "createAt":  {
+                                                                                         "type":  "string",
+                                                                                         "format":  "date-time"
+                                                                                     },
+                                                                        "secureURL":  {
+                                                                                          "type":  "string"
+                                                                                      },
+                                                                        "format":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                        "assigned":  {
+                                                                                         "type":  "array",
+                                                                                         "items":  {
+                                                                                                       "$ref":  "#/components/schemas/Worker"
+                                                                                                   },
+                                                                                         "uniqueItems":  true
+                                                                                     },
+                                                                        "supervisior":  {
+                                                                                            "$ref":  "#/components/schemas/Supervisior"
+                                                                                        },
+                                                                        "resolvedAt":  {
+                                                                                           "type":  "string",
+                                                                                           "format":  "date-time"
+                                                                                       },
+                                                                        "admin":  {
+                                                                                      "type":  "boolean"
+                                                                                  }
+                                                                    }
+                                                 },
+                                       "Supervisior":  {
+                                                           "type":  "object",
+                                                           "properties":  {
+                                                                              "id":  {
+                                                                                         "type":  "string",
+                                                                                         "format":  "uuid"
+                                                                                     },
+                                                                              "user":  {
+                                                                                           "$ref":  "#/components/schemas/User"
+                                                                                       },
+                                                                              "worker":  {
+                                                                                             "type":  "array",
+                                                                                             "items":  {
+                                                                                                           "$ref":  "#/components/schemas/Worker"
+                                                                                                       },
+                                                                                             "uniqueItems":  true
+                                                                                         },
+                                                                              "department":  {
+                                                                                                 "type":  "string",
+                                                                                                 "enum":  [
+                                                                                                              "ROAD",
+                                                                                                              "WATER",
+                                                                                                              "GARBAGE",
+                                                                                                              "VEHICLE",
+                                                                                                              "STREETLIGHT",
+                                                                                                              "OTHER"
+                                                                                                          ]
+                                                                                             },
+                                                                              "started":  {
+                                                                                              "type":  "boolean"
+                                                                                          },
+                                                                              "lastAssignedWorkerId":  {
+                                                                                                           "type":  "string",
+                                                                                                           "format":  "uuid"
+                                                                                                       }
+                                                                          }
+                                                       },
+                                       "User":  {
+                                                    "type":  "object",
+                                                    "properties":  {
+                                                                       "id":  {
+                                                                                  "type":  "string",
+                                                                                  "format":  "uuid"
+                                                                              },
+                                                                       "fullName":  {
+                                                                                        "type":  "string"
+                                                                                    },
+                                                                       "phoneNumber":  {
+                                                                                           "type":  "string"
+                                                                                       },
+                                                                       "email":  {
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                       "passwordHash":  {
+                                                                                            "type":  "string"
+                                                                                        },
+                                                                       "roles":  {
+                                                                                     "type":  "string",
+                                                                                     "enum":  [
+                                                                                                  "CITIZEN",
+                                                                                                  "WORKER",
+                                                                                                  "SUPERVISOR",
+                                                                                                  "DEPARTMENT_HEAD",
+                                                                                                  "WARD_HEAD",
+                                                                                                  "MAYOR",
+                                                                                                  "ADMIN"
+                                                                                              ]
+                                                                                 },
+                                                                       "enable":  {
+                                                                                      "type":  "boolean"
+                                                                                  },
+                                                                       "age":  {
+                                                                                   "type":  "integer",
+                                                                                   "format":  "int32"
+                                                                               },
+                                                                       "gender":  {
+                                                                                      "type":  "string"
+                                                                                  },
+                                                                       "location":  {
+                                                                                        "type":  "string"
+                                                                                    },
+                                                                       "createdAt":  {
+                                                                                         "type":  "string",
+                                                                                         "format":  "date-time"
+                                                                                     }
+                                                                   }
+                                                },
+                                       "Worker":  {
+                                                      "type":  "object",
+                                                      "properties":  {
+                                                                         "id":  {
+                                                                                    "type":  "string",
+                                                                                    "format":  "uuid"
+                                                                                },
+                                                                         "user":  {
+                                                                                      "$ref":  "#/components/schemas/User"
+                                                                                  },
+                                                                         "supervisior":  {
+                                                                                             "$ref":  "#/components/schemas/Supervisior"
+                                                                                         },
+                                                                         "started":  {
+                                                                                         "type":  "boolean"
+                                                                                     },
+                                                                         "issues":  {
+                                                                                        "type":  "array",
+                                                                                        "items":  {
+                                                                                                      "$ref":  "#/components/schemas/Issue"
+                                                                                                  },
+                                                                                        "uniqueItems":  true
+                                                                                    }
+                                                                     }
+                                                  },
                                        "IssueGetDto":  {
                                                            "type":  "object",
                                                            "properties":  {
@@ -1884,7 +2212,37 @@
                                                                                                              ]
                                                                                                 }
                                                                              }
-                                                          }
+                                                          },
+                                       "Issue30DayStatsDto":  {
+                                                                  "type":  "object",
+                                                                  "properties":  {
+                                                                                     "created":  {
+                                                                                                     "type":  "array",
+                                                                                                     "items":  {
+                                                                                                                   "$ref":  "#/components/schemas/IssueDailyCountDto"
+                                                                                                               }
+                                                                                                 },
+                                                                                     "resolved":  {
+                                                                                                      "type":  "array",
+                                                                                                      "items":  {
+                                                                                                                    "$ref":  "#/components/schemas/IssueDailyCountDto"
+                                                                                                                }
+                                                                                                  }
+                                                                                 }
+                                                              },
+                                       "IssueDailyCountDto":  {
+                                                                  "type":  "object",
+                                                                  "properties":  {
+                                                                                     "date":  {
+                                                                                                  "type":  "string",
+                                                                                                  "format":  "date"
+                                                                                              },
+                                                                                     "count":  {
+                                                                                                   "type":  "integer",
+                                                                                                   "format":  "int64"
+                                                                                               }
+                                                                                 }
+                                                              }
                                    }
                    }
 }

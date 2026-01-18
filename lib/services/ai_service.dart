@@ -27,22 +27,18 @@ class AIService {
 
     final prompt = _buildPrompt(description, issueType, criticality);
 
-    // Try configured provider first
     if (Environment.aiProvider == 'groq') {
       final result = await _tryGroq(prompt);
       if (result != null) return result;
-      // Fallback to Gemini
       final geminiResult = await _tryGemini(prompt);
       if (geminiResult != null) return geminiResult;
     } else {
       final result = await _tryGemini(prompt);
       if (result != null) return result;
-      // Fallback to Groq
       final groqResult = await _tryGroq(prompt);
       if (groqResult != null) return groqResult;
     }
 
-    // Final fallback to local generation
     return _generateLocalTitle(description, issueType);
   }
 
@@ -166,12 +162,10 @@ Title:''';
   String _cleanTitle(String title) {
     var t = title.trim();
 
-    // Remove leading quotes
     while (t.isNotEmpty && (t.startsWith('"') || t.startsWith("'"))) {
       t = t.substring(1).trimLeft();
     }
 
-    // Remove trailing quotes
     while (t.isNotEmpty && (t.endsWith('"') || t.endsWith("'"))) {
       t = t.substring(0, t.length - 1).trimRight();
     }
@@ -184,7 +178,6 @@ Title:''';
   String _generateLocalTitle(String description, String issueType) {
     final words = description.trim().split(RegExp(r'\s+'));
 
-    // Extract key action words and nouns
     final actionWords = [
       'broken',
       'damaged',
@@ -241,7 +234,6 @@ Title:''';
       }
     }
 
-    // Build title based on found keywords
     if (actionFound != null && locationFound != null) {
       return '${_capitalize(actionFound)} $issueType issue near $locationFound';
     } else if (actionFound != null) {
@@ -249,10 +241,8 @@ Title:''';
     } else if (locationFound != null) {
       return '$issueType issue near $locationFound';
     } else if (words.length <= 6) {
-      // Use description as title if it's short enough
       return _capitalize(description.trim());
     } else {
-      // Create a summary from first few meaningful words
       final summary = words.take(5).join(' ');
       return '$issueType: ${_capitalize(summary)}...';
     }

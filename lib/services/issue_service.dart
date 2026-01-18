@@ -25,7 +25,6 @@ class IssueService {
     final results = <String, dynamic>{};
 
     try {
-      // Check auth status
       final token = await SecureStorageService.getToken();
       final userId = await SecureStorageService.getUserId();
       results['hasToken'] = token != null;
@@ -38,7 +37,6 @@ class IssueService {
       _log('Has Token: ${token != null}');
       _log('User ID: $userId');
 
-      // Test map endpoint
       if (userId != null) {
         final mapUri = Uri.parse(
           '${Environment.apiBaseUrl}${Environment.getIssuesForMapEndpoint}',
@@ -112,7 +110,6 @@ class IssueService {
         return ApiResult(success: false, message: 'User not authenticated');
       }
 
-      // Verify image exists
       if (!await image.exists()) {
         _log('ERROR: Image file not found at ${image.path}');
         return ApiResult(success: false, message: 'Image file not found');
@@ -121,13 +118,11 @@ class IssueService {
       final uri = Uri.parse('${Environment.apiBaseUrl}/api/issue/create');
       final request = http.MultipartRequest('POST', uri);
 
-      // Add authorization header
       final token = await SecureStorageService.getToken();
       if (token != null) {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      // Create the DTO matching the API spec
       final issueCreateDto = {
         'title': title,
         'issueType': _mapIssueType(type),
@@ -139,7 +134,6 @@ class IssueService {
         'submittedById': userId,
       };
 
-      // Add DTO as a JSON part with name 'issueCreateDto'
       request.files.add(
         http.MultipartFile.fromString(
           'issueCreateDto',
@@ -148,7 +142,6 @@ class IssueService {
         ),
       );
 
-      // Add image file
       final fileName = image.path.split(Platform.pathSeparator).last;
       final mimeType = _getMimeType(fileName);
       request.files.add(
@@ -175,16 +168,12 @@ class IssueService {
       _log('Response Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Backend returns just the issue ID as a string
         final responseBody = response.body.trim();
         String issueId;
 
-        // Handle different response formats
         if (responseBody.startsWith('"') && responseBody.endsWith('"')) {
-          // Response is a quoted string (UUID)
           issueId = responseBody.substring(1, responseBody.length - 1);
         } else if (responseBody.startsWith('{')) {
-          // Response is a JSON object
           final data = jsonDecode(responseBody);
           issueId =
               data['id']?.toString() ??
@@ -192,11 +181,9 @@ class IssueService {
               data['data']?['id']?.toString() ??
               '';
         } else {
-          // Response is a plain string
           issueId = responseBody;
         }
 
-        // Create a minimal IssueModel with the returned ID
         final issue = IssueModel(
           id: issueId,
           title: title,
@@ -259,7 +246,6 @@ class IssueService {
 
   /// Maps issue type labels to API enum values
   static String _mapIssueType(String type) {
-    // Ensure we send only the allowed set: ROAD, WATER, GARBAGE, VEHICLE, STREETLIGHT, OTHER
     final key = type.toLowerCase().trim();
 
     if (key.contains('road')) return 'ROAD';
@@ -277,7 +263,6 @@ class IssueService {
         key.contains('street light'))
       return 'STREETLIGHT';
 
-    // If it already matches one of the uppercase allowed values, return it
     final upper = type.toUpperCase().trim();
     const allowed = {
       'ROAD',
@@ -289,7 +274,6 @@ class IssueService {
     };
     if (allowed.contains(upper)) return upper;
 
-    // Fallback to OTHER
     return 'OTHER';
   }
 
@@ -340,7 +324,6 @@ class IssueService {
         if (data is List) {
           issuesList = data;
         } else if (data['content'] != null) {
-          // Paginated response from Spring Boot
           issuesList = data['content'] as List;
         } else if (data['data'] != null) {
           issuesList = data['data'] as List;
@@ -439,7 +422,6 @@ class IssueService {
           data['detail']?.toString() ??
           'Server error. Please try again.';
     } catch (e) {
-      // If body is not JSON, return it directly if not empty
       if (body.isNotEmpty && body.length < 200) {
         return body;
       }
@@ -476,7 +458,6 @@ class IssueService {
 
       List<IssueMapModel> issues = [];
 
-      // Handle 204 No Content or empty response - try fallback
       if (response.statusCode == 204 || response.body.trim().isEmpty) {
         _log(
           'Map endpoint returned empty - trying fallback to /api/issue/user',
@@ -501,7 +482,6 @@ class IssueService {
             .map((json) => IssueMapModel.fromJson(json))
             .toList();
 
-        // If map endpoint returned empty list, try fallback
         if (issues.isEmpty) {
           _log('Map endpoint returned empty list - trying fallback');
           issues = await _getIssuesFromUserEndpoint();
@@ -543,11 +523,9 @@ class IssueService {
           'Fallback: Got ${result.data!.length} issues from /api/issue/user',
         );
 
-        // The /api/issue/user endpoint doesn't return lat/lng, so we need to fetch each issue's details
         final List<IssueMapModel> mapIssues = [];
 
         for (final issue in result.data!) {
-          // Check if issue already has valid coordinates
           if (issue.latitude != 0.0 && issue.longitude != 0.0) {
             mapIssues.add(
               IssueMapModel(
@@ -560,7 +538,6 @@ class IssueService {
               ),
             );
           } else {
-            // Fetch full issue details to get coordinates
             _log('Fetching full details for issue: ${issue.id}');
             final detailResult = await getIssueById(issue.id);
             if (detailResult.success && detailResult.data != null) {
@@ -613,7 +590,6 @@ class IssueService {
     required File completionImage,
   }) async {
     try {
-      // Verify image exists
       if (!await completionImage.exists()) {
         return ApiResult(success: false, message: 'Image file not found');
       }
@@ -624,13 +600,11 @@ class IssueService {
 
       final request = http.MultipartRequest('POST', uri);
 
-      // Add authorization header
       final token = await SecureStorageService.getToken();
       if (token != null) {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      // Add image file
       final fileName = completionImage.path.split(Platform.pathSeparator).last;
       final mimeType = _getMimeType(fileName);
       request.files.add(
@@ -725,7 +699,6 @@ class IssueService {
         final data = jsonDecode(response.body);
         List<dynamic> content;
 
-        // Handle paginated response (PageIssueRecent)
         if (data is Map && data.containsKey('content')) {
           content = data['content'] as List<dynamic>;
         } else if (data is List) {
@@ -740,7 +713,6 @@ class IssueService {
 
         return ApiResult(success: true, data: issues);
       } else if (response.statusCode == 204) {
-        // No content - empty list
         return ApiResult(success: true, data: []);
       } else {
         final error = _parseError(response.body);
@@ -796,7 +768,6 @@ class IssueService {
 
         return ApiResult(success: true, data: stats);
       } else if (response.statusCode == 204) {
-        // No content - empty list
         return ApiResult(success: true, data: []);
       } else {
         final error = _parseError(response.body);

@@ -31,7 +31,6 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
 
     final result = await IssueService.getUserIssues();
 
-    // Debug: Print parsed issues
     print(
       'Fetched ${result.data?.length ?? 0} issues, success: ${result.success}',
     );

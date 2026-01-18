@@ -21,11 +21,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // --- Animation Constants ---
   static const Duration kAnimDuration = Duration(milliseconds: 600);
   static const Curve kAnimCurve = Curves.fastLinearToSlowEaseIn;
 
-  // State variables
   bool _isLogin = true;
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -34,7 +32,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
@@ -72,7 +69,6 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Get the actual email to send to backend (without 'admin.', 'worker' or 'supervisor' keyword)
   String _getActualEmail(String email) {
     String result = email;
-    // Remove admin. prefix first
     if (_isAdminEmail(email)) {
       result = result.replaceFirst(
         RegExp(r'^admin\.', caseSensitive: false),
@@ -100,12 +96,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isSendingOtp = true);
 
-    // Check user type and get actual email (without keywords)
     final isWorker = _isWorkerEmail(email);
     final isSupervisor = _isSupervisorEmail(email);
     final actualEmail = _getActualEmail(email);
 
-    // Use appropriate service based on user type
     bool success = false;
     String? message;
 
@@ -159,11 +153,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final actualEmail = _getActualEmail(email);
 
     if (_isLogin) {
-      // Use appropriate service for login based on user type
       bool success = false;
       String? errorMessage;
 
-      // Admin uses citizen authentication endpoint (unified)
       if (isAdmin) {
         final response = await AuthService.login(
           email: actualEmail,
@@ -173,7 +165,6 @@ class _LoginScreenState extends State<LoginScreen> {
         success = response.success;
         errorMessage = response.message;
         if (success) {
-          // Save admin role
           await SecureStorageService.saveUserRole('ADMIN');
         }
       } else if (isSupervisor) {
@@ -204,7 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (success) {
-        // Navigate to appropriate home screen based on user type
         Widget homeScreen;
         if (isAdmin) {
           homeScreen = const AdminPanelHomePage();
@@ -225,7 +215,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _showSnackBar(errorMessage ?? 'Login failed. Please try again.');
       }
     } else {
-      // Sign up - go to info screen with original email (keeps keywords for detection)
       if (!mounted) return;
       setState(() => _isLoading = false);
 
@@ -233,8 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => InfoScreen(
-            email:
-                email, // Pass original email so InfoScreen can detect user type
+            email: email,
             password: _passwordController.text,
             otpCode: _otpController.text.trim(),
           ),
@@ -261,7 +249,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // --- Top Section: Animation ---
           Align(
             alignment: Alignment.topCenter,
             child: RepaintBoundary(
@@ -302,7 +289,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // --- Bottom Section: Form Card ---
           Align(
             alignment: Alignment.bottomCenter,
             child: SingleChildScrollView(
@@ -333,7 +319,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Custom Toggle
                           Container(
                             height: 54,
                             decoration: BoxDecoration(

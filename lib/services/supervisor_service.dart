@@ -47,7 +47,6 @@ class SupervisorService {
     required String password,
   }) async {
     try {
-      // Use supervisor-specific login endpoint
       final uri = Uri.parse(
         '${Environment.apiBaseUrl}${Environment.supervisorLoginEndpoint}',
       );
@@ -70,7 +69,6 @@ class SupervisorService {
         final data = jsonDecode(response.body);
         final loginResponse = SupervisorLoginResponse.fromJson(data);
 
-        // Save user data to secure storage with supervisor status
         await SecureStorageService.saveUserData(
           token: loginResponse.token,
           userId: loginResponse.id,
@@ -79,7 +77,6 @@ class SupervisorService {
           isWorker: false,
         );
 
-        // Store supervisor started status and role
         await SecureStorageService.setWorkerStarted(loginResponse.started);
         await SecureStorageService.saveUserRole('SUPERVISOR');
 
@@ -124,7 +121,6 @@ class SupervisorService {
     double? longitude,
   }) async {
     try {
-      // Use supervisor-specific registration endpoint
       final uri = Uri.parse(
         '${Environment.apiBaseUrl}${Environment.supervisorRegisterEndpoint}',
       );
@@ -158,7 +154,6 @@ class SupervisorService {
         final data = jsonDecode(response.body);
         final registerResponse = SupervisorRegisterResponse.fromJson(data);
 
-        // Save basic auth data with supervisor status
         await SecureStorageService.saveUserData(
           token: registerResponse.token,
           userId: registerResponse.id,
@@ -167,7 +162,6 @@ class SupervisorService {
           isWorker: false,
         );
 
-        // Store supervisor started status and role
         await SecureStorageService.setWorkerStarted(registerResponse.started);
         await SecureStorageService.saveUserRole('SUPERVISOR');
 
@@ -204,7 +198,6 @@ class SupervisorService {
     String roles = 'SUPERVISOR',
   }) async {
     try {
-      // Use supervisor-specific getCode endpoint
       final uri = Uri.parse(
         '${Environment.apiBaseUrl}${Environment.supervisorGetCodeEndpoint}?email=$email&roles=$roles',
       );
@@ -357,44 +350,34 @@ class SupervisorService {
     }
   }
 
-  /// Get all workers (for assignment)
-  /// Tries supervisor-specific endpoint first, falls back to admin endpoint
+  /// Get all workers assigned to this supervisor (for assignment)
+  /// Endpoint: GET /api/supervisior/{supervisiorId}/workers
   static Future<SupervisorApiResult<List<AssignableWorker>>>
   getAllWorkers() async {
     try {
       final headers = await _authHeaders;
+      final supervisorId = await SecureStorageService.getUserId();
 
-      // Try supervisor-specific endpoint first
-      var uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.supervisorWorkersEndpoint}',
+      if (supervisorId == null || supervisorId.isEmpty) {
+        return SupervisorApiResult(
+          success: false,
+          message: 'Supervisor ID not found. Please login again.',
+        );
+      }
+
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.supervisorEndpoint}/$supervisorId/workers',
       );
 
-      _log('GET ALL WORKERS REQUEST (Supervisor): $uri');
+      _log('GET SUPERVISOR WORKERS REQUEST: $uri');
 
-      var response = await _client
+      final response = await _client
           .get(uri, headers: headers)
           .timeout(Duration(seconds: Environment.requestTimeout));
 
       _log(
-        'GET ALL WORKERS RESPONSE (Supervisor): ${response.statusCode} - ${response.body}',
+        'GET SUPERVISOR WORKERS RESPONSE: ${response.statusCode} - ${response.body}',
       );
-
-      // If supervisor endpoint fails with 403 or 404, try admin endpoint
-      if (response.statusCode == 403 || response.statusCode == 404) {
-        uri = Uri.parse(
-          '${Environment.apiBaseUrl}${Environment.adminWorkersEndpoint}',
-        );
-
-        _log('GET ALL WORKERS REQUEST (Admin fallback): $uri');
-
-        response = await _client
-            .get(uri, headers: headers)
-            .timeout(Duration(seconds: Environment.requestTimeout));
-
-        _log(
-          'GET ALL WORKERS RESPONSE (Admin): ${response.statusCode} - ${response.body}',
-        );
-      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -424,7 +407,7 @@ class SupervisorService {
         message: 'Connection security error. Please try again.',
       );
     } catch (e) {
-      _log('GET ALL WORKERS ERROR: $e');
+      _log('GET SUPERVISOR WORKERS ERROR: $e');
       return SupervisorApiResult(
         success: false,
         message: 'An error occurred. Please try again.',

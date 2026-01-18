@@ -34,7 +34,6 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
-  // Title generation state
   bool _autoGenerateTitle = true;
   bool _isGeneratingTitle = false;
 
@@ -223,7 +222,6 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         final address = data['address'] as Map<String, dynamic>?;
 
         if (address != null) {
-          // Prioritize locality/suburb for neighborhood names like Mahim, Bhandup
           final locality =
               address['suburb'] ??
               address['neighbourhood'] ??
@@ -453,8 +451,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           message:
               'Your issue has been reported successfully. You will be notified once it is acknowledged.',
           onDismiss: () {
-            Navigator.pop(context); // Close only the dialog
-            _resetForm(); // Reset form to allow new submission
+            Navigator.pop(context);
+            _resetForm();
           },
         ),
       );
@@ -829,7 +827,6 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         ),
         const SizedBox(height: 12),
         if (_autoGenerateTitle) ...[
-          // AI Generate Button
           GestureDetector(
             onTap: _isGeneratingTitle ? null : _generateTitle,
             child: Container(
@@ -904,7 +901,6 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             ),
           ],
         ] else ...[
-          // Manual Title Entry
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -1035,7 +1031,6 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                       setState(() {
                         _selectedLocation = point;
                       });
-                      // Get locality name for the dropped pin location
                       _getAddressFromCoordinates(point);
                     },
                   ),

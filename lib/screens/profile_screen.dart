@@ -19,13 +19,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // State variables
   bool _isLoading = true;
   bool _hasError = false;
   String? _errorMessage;
   UserModel? _user;
 
-  // Settings state
   bool _notificationsEnabled = true;
   String _selectedLanguage = LocalizationService().currentLanguage;
   final LocalizationService _l10n = LocalizationService();
@@ -88,7 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userId = response.user!.id;
       _loadUserMatrix(userId);
     } else if (response.isUnauthorized) {
-      // Session expired, redirect to login
       await AuthService.logout();
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
@@ -666,7 +663,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+              MaterialPageRoute(
+                builder: (context) => const PrivacyPolicyScreen(),
+              ),
             );
           },
         ),
@@ -677,7 +676,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
+              MaterialPageRoute(
+                builder: (context) => const TermsOfServiceScreen(),
+              ),
             );
           },
         ),
@@ -688,7 +689,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const SendFeedbackScreen()),
+              MaterialPageRoute(
+                builder: (context) => const SendFeedbackScreen(),
+              ),
             );
           },
         ),
@@ -819,10 +822,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ============================================================================
-// Optimized Stateless Helper Widgets (for better performance)
-// ============================================================================
-
 class _ProfileCard extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -856,8 +855,7 @@ class _ProfileCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
             child: Row(
-              crossAxisAlignment:
-                  CrossAxisAlignment.center, // Enforce vertical center
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -875,7 +873,7 @@ class _ProfileCard extends StatelessWidget {
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[800],
-                      height: 1.2, // Consistent height
+                      height: 1.2,
                     ),
                   ),
                 ),
@@ -893,7 +891,6 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-// --- UPDATED _DetailRow FOR STRICT ALIGNMENT ---
 class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -910,10 +907,8 @@ class _DetailRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment
-            .start, // Align to top for better multi-line support
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Icon (with slight top padding to align with text baseline)
           Padding(
             padding: const EdgeInsets.only(top: 2.0),
             child: SizedBox(
@@ -926,25 +921,22 @@ class _DetailRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // 2. Label (Fixed Width Container)
-          // This ensures the "Value" always starts at the same vertical position
           SizedBox(
-            width: 110, // Width sufficient for the longest label "Member Since"
+            width: 110,
             child: Text(
               label,
               style: TextStyle(
                 fontSize: 15,
                 color: Colors.grey[600],
-                height: 1.4, // Consistent line height
+                height: 1.4,
               ),
             ),
           ),
 
-          // 3. Value (Left Aligned & Expanded)
           Expanded(
             child: Text(
               value,
-              textAlign: TextAlign.left, // Aligns text to the left
+              textAlign: TextAlign.left,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,

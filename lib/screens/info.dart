@@ -58,10 +58,8 @@ class _InfoScreenState extends State<InfoScreen> {
   bool _isLoading = false;
   bool _isLoadingLocation = false;
 
-  // Date of Birth
   DateTime? _selectedDateOfBirth;
 
-  // Location data
   double? _latitude;
   double? _longitude;
   String? _cityName;
@@ -122,7 +120,6 @@ class _InfoScreenState extends State<InfoScreen> {
     setState(() => _isLoadingLocation = true);
 
     try {
-      // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         _showSnackBar('Location services are disabled. Please enable them.');
@@ -130,7 +127,6 @@ class _InfoScreenState extends State<InfoScreen> {
         return;
       }
 
-      // Check and request permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -149,7 +145,6 @@ class _InfoScreenState extends State<InfoScreen> {
         return;
       }
 
-      // Get current position
       final Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -160,7 +155,6 @@ class _InfoScreenState extends State<InfoScreen> {
       _latitude = position.latitude;
       _longitude = position.longitude;
 
-      // Reverse geocoding to get city name
       final cityName = await _getCityFromCoordinates(
         position.latitude,
         position.longitude,
@@ -198,7 +192,6 @@ class _InfoScreenState extends State<InfoScreen> {
         final address = data['address'] as Map<String, dynamic>?;
 
         if (address != null) {
-          // Prioritize locality/suburb for neighborhood names like Mahim, Bhandup
           final locality =
               address['suburb'] ??
               address['neighbourhood'] ??
@@ -223,7 +216,6 @@ class _InfoScreenState extends State<InfoScreen> {
   Future<void> _submitInfo() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validate date of birth
     if (_selectedDateOfBirth == null) {
       _showSnackBar('Please select your date of birth');
       return;
@@ -231,13 +223,10 @@ class _InfoScreenState extends State<InfoScreen> {
 
     setState(() => _isLoading = true);
 
-    // Check user type based on email
     final bool isWorker = widget.isWorkerEmail;
     final bool isSupervisor = widget.isSupervisorEmail;
-    // Get the actual email without keywords
     final String actualEmail = widget.actualEmail;
 
-    // Debug logging
     print('=== REGISTRATION DEBUG ===');
     print('Original Email: ${widget.email}');
     print('Is Worker: $isWorker');
@@ -253,7 +242,6 @@ class _InfoScreenState extends State<InfoScreen> {
     String? errorMessage;
 
     if (isSupervisor) {
-      // Use SupervisorService for supervisor registration
       print('Calling SupervisorService.register()...');
       final response = await SupervisorService.register(
         email: actualEmail,
@@ -273,7 +261,6 @@ class _InfoScreenState extends State<InfoScreen> {
         'SupervisorService.register() result: success=$success, message=$errorMessage',
       );
     } else if (isWorker) {
-      // Use WorkerService for worker registration
       print('Calling WorkerService.register()...');
       final response = await WorkerService.register(
         email: actualEmail,
@@ -293,7 +280,6 @@ class _InfoScreenState extends State<InfoScreen> {
         'WorkerService.register() result: success=$success, message=$errorMessage',
       );
     } else {
-      // Use AuthService for citizen registration
       print('Calling AuthService.register()...');
       final response = await AuthService.register(
         email: actualEmail,
@@ -323,7 +309,6 @@ class _InfoScreenState extends State<InfoScreen> {
 
     if (success) {
       _showSnackBar('Registration successful!');
-      // Navigate to appropriate home screen based on user type
       Widget homeScreen;
       if (isSupervisor) {
         homeScreen = const AdminHomePage();
@@ -362,7 +347,6 @@ class _InfoScreenState extends State<InfoScreen> {
       backgroundColor: const Color(0xFFF5F7FA),
       body: Stack(
         children: [
-          // Header Animation
           Align(
             alignment: Alignment.topCenter,
             child: Container(
@@ -385,7 +369,6 @@ class _InfoScreenState extends State<InfoScreen> {
             ),
           ),
 
-          // Form Container
           Align(
             alignment: Alignment.bottomCenter,
             child: SingleChildScrollView(
@@ -453,7 +436,6 @@ class _InfoScreenState extends State<InfoScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Date of Birth and Gender Row
                         Row(
                           children: [
                             Expanded(flex: 3, child: _buildDateOfBirthPicker()),
@@ -483,7 +465,6 @@ class _InfoScreenState extends State<InfoScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Location picker with GPS button
                         _buildLocationPicker(),
                         const SizedBox(height: 40),
 

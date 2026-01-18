@@ -30,7 +30,6 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
     );
 
-    // Listen to animation completion
     _animationController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _navigateToNextScreen();
@@ -48,7 +47,6 @@ class _SplashScreenState extends State<SplashScreen>
     if (_navigated) return;
     _navigated = true;
 
-    // Check if user is logged in and if this is first launch
     final isLoggedIn = await AuthService.isLoggedIn();
     final isFirstLaunch = await AppStateService.isFirstLaunch();
     final userRole = await SecureStorageService.getUserRole();
@@ -59,7 +57,6 @@ class _SplashScreenState extends State<SplashScreen>
     Widget nextScreen;
 
     if (isLoggedIn) {
-      // User is logged in, route based on their role
       switch (userRole?.toUpperCase()) {
         case 'ADMIN':
           nextScreen = const AdminPanelHomePage();
@@ -71,7 +68,6 @@ class _SplashScreenState extends State<SplashScreen>
           nextScreen = const WorkerHomePage();
           break;
         default:
-          // For CITIZEN or unknown roles, check isWorker flag as fallback
           if (isWorker) {
             nextScreen = const WorkerHomePage();
           } else {
@@ -79,13 +75,9 @@ class _SplashScreenState extends State<SplashScreen>
           }
       }
     } else if (isFirstLaunch) {
-      // First time user, show discover page
       nextScreen = const DiscoverPage();
-      // Mark app as launched so we don't show discover again
       await AppStateService.markAppLaunched();
     } else {
-      // Returning user but not logged in, go directly to discover
-      // (they've seen it before)
       nextScreen = const DiscoverPage();
     }
 
@@ -117,9 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
             repeat: false,
             frameRate: FrameRate.max,
             onLoaded: (composition) {
-              // Set the animation duration to 3 seconds
               _animationController.duration = const Duration(seconds: 3);
-              // Reset to beginning and then play after a 1.5 second delay
               _animationController.reset();
               Future.delayed(const Duration(milliseconds: 1500), () {
                 if (mounted) {

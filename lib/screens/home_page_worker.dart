@@ -3,10 +3,12 @@ import '../services/secure_storage_service.dart';
 import '../services/worker_service.dart';
 import '../services/issue_service.dart';
 import '../models/issue_map_model.dart';
+import '../models/worker_models.dart';
 import 'discover.dart';
-import 'notifications.dart'; // Import the notifications screen
+import 'notifications.dart';
 import 'update_work.dart';
 import 'worker_map_screen.dart';
+import 'issue_detail_screen.dart';
 
 class WorkerHomePage extends StatefulWidget {
   const WorkerHomePage({super.key});
@@ -97,7 +99,7 @@ class _DashboardTabState extends State<_DashboardTab> {
   String _userName = 'Worker';
   bool _isLoading = true;
   String? _workerId;
-  List<IssueMapModel> _assignedIssues = [];
+  List<IssueForWorkerDto> _assignedIssues = [];
 
   // Stats
   int _assignedCount = 0;
@@ -105,7 +107,7 @@ class _DashboardTabState extends State<_DashboardTab> {
   int _doneCount = 0;
 
   // Urgent issues (HIGH criticality)
-  List<IssueMapModel> _urgentIssues = [];
+  List<IssueForWorkerDto> _urgentIssues = [];
 
   @override
   void initState() {
@@ -136,12 +138,9 @@ class _DashboardTabState extends State<_DashboardTab> {
   }
 
   Future<void> _loadAssignedIssues() async {
-    if (_workerId == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    setState(() => _isLoading = true);
 
-    final result = await IssueService.getIssueMapForWorker(_workerId!);
+    final result = await WorkerService.getAssignedIssues();
 
     if (mounted) {
       if (result.success && result.data != null) {
@@ -343,9 +342,13 @@ class _DashboardTabState extends State<_DashboardTab> {
                 (issue) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _buildUrgentCard(
-                    title: issue.issueType,
-                    address: 'Unknown location',
-                    time: _formatTimeAgo(null),
+                    title: issue.title.isNotEmpty
+                        ? issue.title
+                        : issue.issueTypeDisplay,
+                    address: issue.description.isNotEmpty
+                        ? issue.description
+                        : 'No description',
+                    time: _formatTimeAgo(issue.createdAt),
                     issue: issue,
                   ),
                 ),
@@ -434,97 +437,116 @@ class _DashboardTabState extends State<_DashboardTab> {
     required String title,
     required String address,
     required String time,
-    IssueMapModel? issue,
+    IssueForWorkerDto? issue,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFEBEE), // Lighter red
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.shade100),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
-              shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: issue != null
+          ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => IssueDetailScreen(issueId: issue.id),
+                ),
+              );
+            }
+          : null,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFEBEE),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.red.shade100),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.warning_rounded, color: Colors.red),
             ),
-            child: const Icon(Icons.warning_rounded, color: Colors.red),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  address,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 14, color: Colors.red),
-                    const SizedBox(width: 4),
-                    Text(
-                      time,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.red,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Poppins',
-                      ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                      fontFamily: 'Poppins',
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: issue != null
-                ? () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UpdateWorkPage(
-                          taskTitle: title,
-                          taskAddress: address,
-                          currentStatus: issue.stages,
-                          issueId: issue.id,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    address,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black87,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Poppins',
                         ),
                       ),
-                    );
-                  }
-                : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.red,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                    ],
+                  ),
+                ],
               ),
             ),
-            child: const Text("View"),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: issue != null
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => UpdateWorkPage(
+                            taskTitle: title,
+                            taskAddress: address,
+                            currentStatus: issue.stages,
+                            issueId: issue.id,
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.red,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 0,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text("View"),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -552,9 +574,8 @@ class _IssuesTabState extends State<_IssuesTab> {
   int selectedFilter = 0;
 
   bool _isLoading = true;
-  String? _workerId;
-  List<IssueMapModel> _allIssues = [];
-  List<IssueMapModel> _filteredIssues = [];
+  List<IssueForWorkerDto> _allIssues = [];
+  List<IssueForWorkerDto> _filteredIssues = [];
 
   @override
   void initState() {
@@ -563,24 +584,13 @@ class _IssuesTabState extends State<_IssuesTab> {
   }
 
   Future<void> _loadData() async {
-    await _loadWorkerId();
     await _loadAssignedIssues();
   }
 
-  Future<void> _loadWorkerId() async {
-    final userId = await SecureStorageService.getUserId();
-    if (mounted && userId != null) {
-      setState(() => _workerId = userId);
-    }
-  }
-
   Future<void> _loadAssignedIssues() async {
-    if (_workerId == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    setState(() => _isLoading = true);
 
-    final result = await IssueService.getIssueMapForWorker(_workerId!);
+    final result = await WorkerService.getAssignedIssues();
 
     if (mounted) {
       if (result.success && result.data != null) {
@@ -817,10 +827,12 @@ class _IssuesTabState extends State<_IssuesTab> {
                       final issue = _filteredIssues[index];
                       return _buildTaskCard(
                         issue: issue,
-                        title: issue.title?.isNotEmpty == true
-                            ? issue.title!
+                        title: issue.title.isNotEmpty
+                            ? issue.title
                             : issue.issueTypeDisplay,
-                        address: issue.location ?? 'Location not available',
+                        address: issue.description.isNotEmpty
+                            ? issue.description
+                            : 'No description available',
                         date: _formatDueDate(issue.createdAt),
                         status: _getStatusDisplay(issue.stages),
                         statusColor: _getStatusColor(issue.stages),
@@ -834,142 +846,151 @@ class _IssuesTabState extends State<_IssuesTab> {
   }
 
   Widget _buildTaskCard({
-    required IssueMapModel issue,
+    required IssueForWorkerDto issue,
     required String title,
     required String address,
     required String date,
     required String status,
     required Color statusColor,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => IssueDetailScreen(issueId: issue.id),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                Icon(Icons.more_horiz, color: Colors.grey[400]),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: Colors.grey,
                 ),
-                child: Text(
-                  status,
+                const SizedBox(width: 4),
+                Text(
+                  address,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
+                    fontSize: 13,
+                    color: Colors.grey[600],
                     fontFamily: 'Poppins',
                   ),
                 ),
-              ),
-              Icon(Icons.more_horiz, color: Colors.grey[400]),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Poppins',
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(
-                Icons.location_on_outlined,
-                size: 14,
-                color: Colors.grey,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                address,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[600],
-                  fontFamily: 'Poppins',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today_outlined,
-                    size: 14,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    date,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontFamily: 'Poppins',
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: Colors.grey,
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(
-                height: 36,
-                child: ElevatedButton(
-                  // CHANGED: Navigation to UpdateWorkPage with issue ID
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UpdateWorkPage(
-                          taskTitle: title,
-                          taskAddress: address,
-                          currentStatus: status,
-                          issueId: issue.id,
-                        ),
+                    const SizedBox(width: 4),
+                    Text(
+                      date,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontFamily: 'Poppins',
                       ),
-                    ).then((_) => _refreshData()); // Refresh after returning
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1976D2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    "Update",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Poppins',
+                  ],
+                ),
+                SizedBox(
+                  height: 36,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => UpdateWorkPage(
+                            taskTitle: title,
+                            taskAddress: address,
+                            currentStatus: status,
+                            issueId: issue.id,
+                          ),
+                        ),
+                      ).then((_) => _refreshData());
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1976D2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Update",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'Poppins',
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

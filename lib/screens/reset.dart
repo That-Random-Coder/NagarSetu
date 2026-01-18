@@ -11,19 +11,16 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  // --- Animation Constants ---
   static const Duration kAnimDuration = Duration(milliseconds: 600);
   static const Curve kAnimCurve = Curves.fastLinearToSlowEaseIn;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
 
-  // State
   bool _otpSent = false;
   bool _isLoading = false;
   bool _obscurePass = true;
@@ -46,7 +43,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       return;
     }
 
-    // Simulate sending OTP
     setState(() => _otpSent = true);
     ScaffoldMessenger.of(
       context,
@@ -64,7 +60,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      // Simulate Network API Call
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() => _isLoading = false);
@@ -75,7 +70,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
           );
 
-          // Go back to Login Screen
           Navigator.pop(context);
         }
       });
@@ -89,7 +83,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // --- Top Section: Animation ---
           Align(
             alignment: Alignment.topCenter,
             child: Container(
@@ -99,7 +92,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               child: SafeArea(
                 child: Center(
                   child: Lottie.network(
-                    'https://assets3.lottiefiles.com/packages/lf20_gjmecwii.json', // Lock/Security Animation
+                    'https://assets3.lottiefiles.com/packages/lf20_gjmecwii.json',
                     errorBuilder: (context, error, stackTrace) => const Icon(
                       Icons.lock_reset,
                       size: 80,
@@ -111,7 +104,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
           ),
 
-          // --- Back Button ---
           Positioned(
             top: 40,
             left: 16,
@@ -124,7 +116,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
           ),
 
-          // --- Bottom Section: Form ---
           Align(
             alignment: Alignment.bottomCenter,
             child: SingleChildScrollView(
@@ -172,7 +163,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // --- Email & OTP Button Row ---
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -215,7 +205,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ],
                         ),
 
-                        // --- Animated Section: OTP & Passwords ---
                         AnimatedSize(
                           duration: kAnimDuration,
                           curve: kAnimCurve,
@@ -252,7 +241,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                     _buildTextField(
                                       controller: _confirmPassController,
                                       label: "Confirm Password",
-                                      // CHANGED: Fixed invalid icon error
                                       icon: Icons.verified_user_outlined,
                                       isObscure: _obscureConfirm,
                                       hasSuffix: true,
@@ -273,7 +261,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                         const SizedBox(height: 40),
 
-                        // --- Submit Button ---
                         SizedBox(
                           height: 56,
                           child: ElevatedButton(

@@ -7,22 +7,16 @@ class DiscoverPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Theme colors
     const Color primaryColor = Color(0xFF1976D2);
     const Color textColor = Color(0xFF2D3436);
 
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Background Image
           Positioned.fill(
-            child: Image.asset(
-              'assets/bg.jpeg',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/bg.jpeg', fit: BoxFit.cover),
           ),
 
-          // 2. Gradient Layer
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -40,30 +34,26 @@ class DiscoverPage extends StatelessWidget {
             ),
           ),
 
-          // 3. Content
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- NEW: Logo Added Here ---
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Transform.translate(
-                      offset: const Offset(-80, 340), 
+                      offset: const Offset(-80, 340),
                       child: Image.asset(
                         'assets/Icon_Setu.png',
-                        height: 130, 
+                        height: 130,
                         fit: BoxFit.contain,
                       ),
                     ),
                   ),
 
-                  // Spacer pushes everything below it to the bottom
-                  const Spacer(), 
+                  const Spacer(),
 
-                  // Bottom Text
                   Text(
                     "Connecting Cities.\nCivic Solutions.",
                     style: GoogleFonts.poppins(
@@ -84,7 +74,6 @@ class DiscoverPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
 
-                  // Get Started Button
                   ScaleButton(
                     child: SizedBox(
                       width: double.infinity,
@@ -93,7 +82,9 @@ class DiscoverPage extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const LoginScreen(),
+                            ),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -125,7 +116,6 @@ class DiscoverPage extends StatelessWidget {
   }
 }
 
-// --- Custom Widget for Click Animation (Unchanged) ---
 class ScaleButton extends StatefulWidget {
   final Widget child;
   const ScaleButton({super.key, required this.child});

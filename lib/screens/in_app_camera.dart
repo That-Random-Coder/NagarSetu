@@ -60,9 +60,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
     );
     try {
       await _controller!.initialize();
-    } catch (e) {
-      // initialization error handled by showing a simple message
-    }
+    } catch (e) {}
     if (!mounted) return;
     setState(() {
       _isInitializing = false;

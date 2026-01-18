@@ -232,7 +232,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             );
           }
 
-          // If space is limited, allow horizontal scrolling; otherwise center layout.
           if (needsScroll) {
             return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -337,17 +336,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Horizontal Timeline
           _buildHorizontalTimeline(issue.status),
 
-          // Issue Image
           if (issue.imageUrl != null && issue.imageUrl!.isNotEmpty) ...[
             const SizedBox(height: 8),
             _CloudinaryImage(url: issue.imageUrl!),
             const SizedBox(height: 16),
           ],
 
-          // Description / Details
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -442,7 +438,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
 
           const SizedBox(height: 16),
 
-          // Map below description
           Container(
             height: 220,
             margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -519,7 +514,6 @@ class _CloudinaryImageState extends State<_CloudinaryImage> {
 
     final uri = Uri.tryParse(original);
     if (uri != null) {
-      // Strip query params and fragment
       final base = uri
           .replace(queryParameters: {}, fragment: '')
           .toString()
@@ -527,7 +521,6 @@ class _CloudinaryImageState extends State<_CloudinaryImage> {
           .first;
       if (!list.contains(base)) list.add(base);
 
-      // If there's no extension, try common ones
       final hasExt = base.split('/').last.contains('.');
       if (!hasExt) {
         if (!list.contains('$base.jpg')) list.add('$base.jpg');
@@ -535,7 +528,6 @@ class _CloudinaryImageState extends State<_CloudinaryImage> {
         if (!list.contains('$base.jpeg')) list.add('$base.jpeg');
       }
 
-      // Try adding format param
       if (!original.contains('?')) {
         final withFormat = '$original?format=jpg';
         if (!list.contains(withFormat)) list.add(withFormat);
@@ -585,7 +577,6 @@ class _CloudinaryImageState extends State<_CloudinaryImage> {
           errorWidget: (context, url, error) {
             if (Environment.enableLogging)
               print('Image load error: $error for URL: $url');
-            // Try next candidate
             WidgetsBinding.instance.addPostFrameCallback((_) => _tryNext());
             return Container(
               color: Colors.grey[200],

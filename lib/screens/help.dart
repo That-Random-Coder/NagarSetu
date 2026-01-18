@@ -15,11 +15,9 @@ class _HelpFAQScreenState extends State<HelpFAQScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _queryFocusNode = FocusNode();
 
-  // Theme Color
   final Color _primaryColor = const Color(0xFF1976D2);
   final Color _backgroundColor = const Color(0xFFF5F7FA);
 
-  // Hardcoded FAQs Data
   final List<Map<String, String>> _faqs = [
     {
       "question": "How do I report a civic issue?",
@@ -56,7 +54,6 @@ class _HelpFAQScreenState extends State<HelpFAQScreen> {
 
   void _onFocusChange() {
     if (_queryFocusNode.hasFocus) {
-      // Scroll to the bottom when the text field is focused
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
           _scrollController.animateTo(
@@ -172,7 +169,6 @@ class _HelpFAQScreenState extends State<HelpFAQScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Section 1: FAQs ---
               Text(
                 "Frequently Asked Questions",
                 style: GoogleFonts.poppins(
@@ -183,7 +179,6 @@ class _HelpFAQScreenState extends State<HelpFAQScreen> {
               ),
               const SizedBox(height: 16),
 
-              // FAQ List
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -195,7 +190,6 @@ class _HelpFAQScreenState extends State<HelpFAQScreen> {
 
               const SizedBox(height: 32),
 
-              // --- Section 2: Contact Form ---
               Text(
                 "Still need help?",
                 style: GoogleFonts.poppins(
@@ -288,7 +282,6 @@ class _HelpFAQScreenState extends State<HelpFAQScreen> {
                 ),
               ),
 
-              // Extra space at bottom
               const SizedBox(height: 40),
             ],
           ),

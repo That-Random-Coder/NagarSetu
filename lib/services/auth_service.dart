@@ -100,7 +100,6 @@ class AuthService {
         final data = jsonDecode(response.body);
         final loginResponse = LoginResponse.fromJson(data);
 
-        // Save user data to secure storage with worker status
         await SecureStorageService.saveUserData(
           token: loginResponse.token,
           userId: loginResponse.id,
@@ -184,7 +183,6 @@ class AuthService {
         final data = jsonDecode(response.body);
         final registerResponse = RegisterResponse.fromJson(data);
 
-        // Save basic auth data with worker status
         await SecureStorageService.saveUserData(
           token: registerResponse.token,
           userId: registerResponse.id,
@@ -268,7 +266,6 @@ class AuthService {
   /// Logout current user and clear all stored data
   static Future<void> logout() async {
     await SecureStorageService.clearAll();
-    // Reset to first launch state so user sees discover page again
     await AppStateService.resetToFirstLaunch();
   }
 

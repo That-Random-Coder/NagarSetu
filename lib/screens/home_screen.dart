@@ -125,14 +125,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
   @override
   void didPush() {
-    // Screen was pushed onto navigation stack
     _loadLeaderboard();
     _loadRecentIssues();
   }
 
   @override
   void didPopNext() {
-    // Returned to this screen (another route popped)
     _loadLeaderboard();
     _loadRecentIssues();
   }
@@ -212,7 +210,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 const SizedBox(height: 24),
                 _buildRecentIssues(),
                 const SizedBox(height: 24),
-                // --- NEW SECTION ADDED HERE ---
                 _buildDailyStats(),
                 const SizedBox(height: 24),
                 _buildHowItWorks(),
@@ -225,8 +222,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
-
-  // ... (Previous methods: _buildHeader, _buildLeaderboard remain unchanged) ...
 
   Widget _buildHeader() {
     return Row(
@@ -376,7 +371,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 );
               }
 
-              // No leaderboard entries
               return Column(
                 children: topContributors
                     .map((contributor) => _buildContributorItem(contributor))
@@ -538,7 +532,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ),
             TextButton(
               onPressed: () {
-                // Navigate to My Issues screen
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -821,7 +814,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  // --- NEW: Weekly Stats Section ---
   Widget _buildDailyStats() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -861,7 +853,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  // --- NEW: Individual Stat Card ---
   Widget _buildStatCard(WeeklyStageCount stat) {
     return Container(
       width: 160, // Width for each card

@@ -6,24 +6,25 @@ class Environment {
   /// Base URL for the API server
   /// Change this for different environments (dev, staging, production)
   static const String apiBaseUrl =
-      'https://privacy-quote-insured-malpractice.trycloudflare.com';
+      'https://engagement-counseling-attitudes-fee.trycloudflare.com';
 
   /// API endpoints
   static const String apiVersion = '/api';
 
-  // Authentication endpoints (for Citizens)
   static const String authEndpoint = '$apiVersion/authenication';
   static const String loginEndpoint = '$authEndpoint/login';
   static const String registerEndpoint = '$authEndpoint/registration';
   static const String getCodeEndpoint = '$authEndpoint/getCode';
 
-  // Worker endpoints
   static const String workerEndpoint = '$apiVersion/worker';
   static const String workerLoginEndpoint = '$workerEndpoint/login';
   static const String workerRegisterEndpoint = '$workerEndpoint/registration';
   static const String workerGetCodeEndpoint = '$workerEndpoint/getCode';
+  static const String workerAssignedIssuesEndpoint =
+      '$workerEndpoint/issues/assigned';
+  static const String workerIssuesEndpoint = '$workerEndpoint/issues';
+  static const String workerStageEndpoint = '$workerEndpoint/stage';
 
-  // Supervisor endpoints
   static const String supervisorEndpoint = '$apiVersion/supervisior';
   static const String supervisorLoginEndpoint = '$supervisorEndpoint/login';
   static const String supervisorRegisterEndpoint =
@@ -32,7 +33,6 @@ class Environment {
   static const String supervisorFilterEndpoint = '$supervisorEndpoint/filter';
   static const String supervisorWorkersEndpoint = '$supervisorEndpoint/workers';
 
-  // Admin endpoints
   static const String adminEndpoint = '$apiVersion/admin';
   static const String adminWorkersEndpoint = '$adminEndpoint/workers';
   static const String adminWorkersNoStartEndpoint =
@@ -48,13 +48,11 @@ class Environment {
   static const String adminReassignIssueWorkerEndpoint =
       '$adminEndpoint/reassignIssueWorker';
 
-  // User endpoints
   static const String userEndpoint = '$apiVersion/user';
   static const String getUserEndpoint = '$userEndpoint/get';
   static const String getUserMatrixEndpoint = '$userEndpoint/getMatrix';
   static const String getLeaderboardEndpoint = '$userEndpoint/getLeaderboard';
 
-  // Issue endpoints
   static const String issueEndpoint = '$apiVersion/issue';
   static const String createIssueEndpoint = '$issueEndpoint/create';
   static const String getUserIssuesEndpoint = '$issueEndpoint/user';
@@ -69,13 +67,10 @@ class Environment {
   static const String getIssueMapSupervisorEndpoint =
       '$issueEndpoint/map/supervisor';
   static const String getIssueMapAdminEndpoint = '$issueEndpoint/map/admin';
-  static const String getIssueByIdEndpoint =
-      issueEndpoint; // GET /api/issue/{id}
+  static const String getIssueByIdEndpoint = issueEndpoint;
 
   /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
   /// Get your free API key from: https://aistudio.google.com/app/apikey
-  // static const String geminiApiKey = 'AIzaSyBuKMAWjJapcvCVDDZdfvHC8p3SqJXHnHk';
-
   /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
   /// Get your free API key from: https://aistudio.google.com/app/apikey
   static const String geminiApiKey = '';

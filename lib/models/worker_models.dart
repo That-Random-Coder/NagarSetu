@@ -82,6 +82,98 @@ class AdminWorkerDto {
   }
 }
 
+/// Issue for worker DTO - matches IssueForWorkerDto from API
+class IssueForWorkerDto {
+  final String id;
+  final String title;
+  final String description;
+  final String stages;
+  final DateTime? createdAt;
+  final String? secureURL;
+  final String criticality;
+  final String issueType;
+  final String? supervisorName;
+
+  IssueForWorkerDto({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.stages,
+    this.createdAt,
+    this.secureURL,
+    required this.criticality,
+    required this.issueType,
+    this.supervisorName,
+  });
+
+  factory IssueForWorkerDto.fromJson(Map<String, dynamic> json) {
+    return IssueForWorkerDto(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      stages: json['stages']?.toString() ?? 'PENDING',
+      createdAt: json['createAt'] != null
+          ? DateTime.tryParse(json['createAt'].toString())
+          : null,
+      secureURL: json['secureURL']?.toString(),
+      criticality: json['criticality']?.toString() ?? 'MEDIUM',
+      issueType: json['issueType']?.toString() ?? 'OTHER',
+      supervisorName: json['supervisorName']?.toString(),
+    );
+  }
+
+  String get statusDisplay {
+    switch (stages.toUpperCase()) {
+      case 'PENDING':
+        return 'Pending';
+      case 'ACKNOWLEDGED':
+        return 'Acknowledged';
+      case 'TEAM_ASSIGNED':
+        return 'Team Assigned';
+      case 'IN_PROGRESS':
+        return 'In Progress';
+      case 'RESOLVED':
+        return 'Resolved';
+      case 'RECONSIDERED':
+        return 'Reconsidered';
+      default:
+        return stages;
+    }
+  }
+
+  String get issueTypeDisplay {
+    switch (issueType.toUpperCase()) {
+      case 'ROAD':
+        return 'Road';
+      case 'WATER':
+        return 'Water';
+      case 'GARBAGE':
+        return 'Garbage';
+      case 'VEHICLE':
+        return 'Vehicle';
+      case 'STREETLIGHT':
+        return 'Streetlight';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return issueType;
+    }
+  }
+
+  String get criticalityDisplay {
+    switch (criticality.toUpperCase()) {
+      case 'LOW':
+        return 'Low';
+      case 'MEDIUM':
+        return 'Medium';
+      case 'HIGH':
+        return 'High';
+      default:
+        return criticality;
+    }
+  }
+}
+
 /// Issue assigned to worker
 class WorkerIssue {
   final String id;
