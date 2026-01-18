@@ -4,6 +4,7 @@ import '../services/worker_service.dart';
 import 'discover.dart';
 import 'notifications.dart'; // Import the notifications screen
 import 'update_work.dart';
+import 'worker_map_screen.dart';
 
 class WorkerHomePage extends StatefulWidget {
   const WorkerHomePage({super.key});
@@ -19,6 +20,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
   static const List<Widget> _widgetOptions = <Widget>[
     _DashboardTab(),
     _IssuesTab(),
+    WorkerMapScreen(),
     _WorkerProfileTab(),
   ];
 
@@ -56,6 +58,10 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
             BottomNavigationBarItem(
               icon: Icon(Icons.handyman_rounded),
               label: 'Issues',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map_rounded),
+              label: 'Map',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),

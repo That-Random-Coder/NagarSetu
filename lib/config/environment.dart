@@ -6,7 +6,7 @@ class Environment {
   /// Base URL for the API server
   /// Change this for different environments (dev, staging, production)
   static const String apiBaseUrl =
-      'https://scripts-isa-musical-purchases.trycloudflare.com';
+      'https://mirror-incomplete-active-hardware.trycloudflare.com';
 
   /// API endpoints
   static const String apiVersion = '/api';
@@ -62,6 +62,12 @@ class Environment {
   static const String getRecentIssuesEndpoint = '$issueEndpoint/recent';
   static const String getWeeklyStatsEndpoint =
       '$issueEndpoint/stats/weekly/stages';
+  static const String getIssueMapWorkerEndpoint = '$issueEndpoint/map/worker';
+  static const String getIssueMapSupervisorEndpoint =
+      '$issueEndpoint/map/supervisor';
+  static const String getIssueMapAdminEndpoint = '$issueEndpoint/map/admin';
+  static const String getIssueByIdEndpoint =
+      issueEndpoint; // GET /api/issue/{id}
 
   /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
   /// Get your free API key from: https://aistudio.google.com/app/apikey

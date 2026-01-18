@@ -2,8 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/admin_service.dart';
 import '../services/secure_storage_service.dart';
+import '../services/user_service.dart';
+import '../services/issue_service.dart';
+import '../services/hotspot_service.dart';
 import '../models/admin_models.dart';
+import '../models/leaderboard_entry.dart';
+import '../models/weekly_stats_model.dart';
+import '../models/issue_map_model.dart';
+import '../models/hotspot_model.dart';
 import 'login.dart';
+import 'admin_map_screen.dart';
+import 'admin_hotspots_screen.dart';
 
 class AdminPanelHomePage extends StatefulWidget {
   const AdminPanelHomePage({super.key});
@@ -19,6 +28,7 @@ class _AdminPanelHomePageState extends State<AdminPanelHomePage> {
     _AdminDashboardTab(),
     _AdminWorkersTab(),
     _AdminSupervisorsTab(),
+    AdminMapScreen(),
     _AdminProfileTab(),
   ];
 
@@ -61,6 +71,10 @@ class _AdminPanelHomePageState extends State<AdminPanelHomePage> {
               label: 'Supervisors',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.map_rounded),
+              label: 'Map',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),
               label: 'Profile',
             ),
@@ -95,10 +109,26 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
   int _totalSupervisors = 0;
   int _pendingSupervisors = 0;
 
+  // Leaderboard data
+  bool _isLoadingLeaderboard = true;
+  List<LeaderboardEntry> _leaderboard = [];
+
+  // Weekly stats data
+  bool _isLoadingWeeklyStats = true;
+  List<WeeklyStageCount> _weeklyStats = [];
+
+  // Hotspot data
+  bool _isLoadingHotspots = true;
+  List<HotspotModel> _hotspots = [];
+  Map<String, dynamic> _hotspotSummary = {};
+
   @override
   void initState() {
     super.initState();
     _loadDashboardData();
+    _loadLeaderboard();
+    _loadWeeklyStats();
+    _loadHotspots();
   }
 
   Future<void> _loadDashboardData() async {
@@ -121,10 +151,64 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
     }
   }
 
+  Future<void> _loadLeaderboard() async {
+    setState(() => _isLoadingLeaderboard = true);
+    final entries = await UserService.getLeaderboard();
+    if (mounted) {
+      setState(() {
+        _leaderboard = entries;
+        _isLoadingLeaderboard = false;
+      });
+    }
+  }
+
+  Future<void> _loadWeeklyStats() async {
+    setState(() => _isLoadingWeeklyStats = true);
+    final result = await IssueService.getWeeklyStats();
+    if (mounted) {
+      setState(() {
+        if (result.success && result.data != null) {
+          _weeklyStats = result.data!;
+        }
+        _isLoadingWeeklyStats = false;
+      });
+    }
+  }
+
+  Future<void> _loadHotspots() async {
+    setState(() => _isLoadingHotspots = true);
+    final result = await IssueService.getIssueMapForAdmin();
+    if (mounted) {
+      setState(() {
+        if (result.success && result.data != null) {
+          _hotspots = HotspotService.detectHotspots(result.data!);
+          _hotspotSummary = HotspotService.getHotspotSummary(_hotspots);
+        }
+        _isLoadingHotspots = false;
+      });
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([
+      _loadDashboardData(),
+      _loadLeaderboard(),
+      _loadWeeklyStats(),
+      _loadHotspots(),
+    ]);
+  }
+
+  String _initials(String name) {
+    final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: _loadDashboardData,
+      onRefresh: _refreshAll,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(20),
@@ -169,7 +253,7 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
 
             // Stats Grid
             if (_isLoading)
@@ -215,7 +299,22 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
                 ],
               ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
+
+            // Leaderboard Section
+            _buildLeaderboardSection(),
+
+            const SizedBox(height: 24),
+
+            // Weekly Stats Section
+            _buildWeeklyStatsSection(),
+
+            const SizedBox(height: 24),
+
+            // Hotspot Summary Section
+            _buildHotspotSummarySection(),
+
+            const SizedBox(height: 24),
 
             // Quick Actions
             Text(
@@ -253,8 +352,563 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
                 homeState?._onItemTapped(2);
               },
             ),
+            const SizedBox(height: 12),
+            _buildQuickActionCard(
+              'View All Hotspots',
+              'Identify and analyze high-issue areas',
+              Icons.location_on_rounded,
+              Colors.red,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        AdminHotspotsScreen(hotspots: _hotspots),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 30),
           ],
         ),
+      ),
+    );
+  }
+
+  // Leaderboard Section
+  Widget _buildLeaderboardSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue[600]!, Colors.blue[400]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
+              const SizedBox(width: 10),
+              Text(
+                'Top Contributors',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isLoadingLeaderboard)
+            ...List.generate(3, (_) => _buildContributorPlaceholder())
+          else if (_leaderboard.isNotEmpty)
+            ..._leaderboard.take(5).toList().asMap().entries.map((e) {
+              return _buildContributorItem(e.key + 1, e.value);
+            })
+          else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'No leaderboard data available',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContributorItem(int rank, LeaderboardEntry entry) {
+    Color rankColor;
+    IconData? rankIcon;
+
+    switch (rank) {
+      case 1:
+        rankColor = Colors.amber;
+        rankIcon = Icons.looks_one;
+        break;
+      case 2:
+        rankColor = Colors.grey[300]!;
+        rankIcon = Icons.looks_two;
+        break;
+      case 3:
+        rankColor = Colors.orange[300]!;
+        rankIcon = Icons.looks_3;
+        break;
+      default:
+        rankColor = Colors.white;
+        rankIcon = null;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          if (rankIcon != null)
+            Icon(rankIcon, color: rankColor, size: 26)
+          else
+            Container(
+              width: 26,
+              height: 26,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$rank',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          const SizedBox(width: 12),
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.white,
+            child: Text(
+              _initials(entry.fullName),
+              style: GoogleFonts.poppins(
+                color: Colors.blue[700],
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              entry.fullName,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '${entry.score} pts',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContributorPlaceholder() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            color: Colors.white.withOpacity(0.15),
+          ),
+          const SizedBox(width: 12),
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.white.withOpacity(0.15),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(height: 14, color: Colors.white.withOpacity(0.15)),
+          ),
+          Container(
+            width: 60,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Weekly Stats Section
+  Widget _buildWeeklyStatsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.analytics_rounded, color: Colors.blue[600], size: 24),
+            const SizedBox(width: 8),
+            Text(
+              'Weekly Issue Stats',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 100,
+          child: _isLoadingWeeklyStats
+              ? const Center(child: CircularProgressIndicator())
+              : _weeklyStats.isEmpty
+              ? Center(
+                  child: Text(
+                    'No stats available',
+                    style: GoogleFonts.poppins(color: Colors.grey[600]),
+                  ),
+                )
+              : ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _weeklyStats.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final stat = _weeklyStats[index];
+                    return _buildWeeklyStatCard(stat);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeeklyStatCard(WeeklyStageCount stat) {
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                stat.count.toString(),
+                style: GoogleFonts.poppins(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: stat.stageColor,
+                ),
+              ),
+              Icon(
+                stat.stageIcon,
+                color: stat.stageColor.withOpacity(0.6),
+                size: 28,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            stat.displayLabel,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Hotspot Summary Section
+  Widget _buildHotspotSummarySection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.red[600]!, Colors.orange[500]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Hotspot Areas',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              if (!_isLoadingHotspots && _hotspots.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AdminHotspotsScreen(hotspots: _hotspots),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View All',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isLoadingHotspots)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            )
+          else if (_hotspots.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.white70,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No hotspots detected',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Column(
+              children: [
+                // Summary stats row
+                Row(
+                  children: [
+                    _buildHotspotStat(
+                      'Total',
+                      _hotspotSummary['total'] ?? 0,
+                      Colors.white,
+                    ),
+                    _buildHotspotStat(
+                      'Critical',
+                      _hotspotSummary['critical'] ?? 0,
+                      Colors.red[900]!,
+                    ),
+                    _buildHotspotStat(
+                      'High',
+                      _hotspotSummary['high'] ?? 0,
+                      Colors.red[400]!,
+                    ),
+                    _buildHotspotStat(
+                      'Moderate',
+                      _hotspotSummary['moderate'] ?? 0,
+                      Colors.orange[400]!,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Top 3 hotspots
+                ..._hotspots
+                    .take(3)
+                    .map((hotspot) => _buildHotspotItem(hotspot)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHotspotStat(String label, int value, Color color) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value.toString(),
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.poppins(fontSize: 10, color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHotspotItem(HotspotModel hotspot) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: hotspot.color.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(hotspot.icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hotspot.locality,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${hotspot.issueCount} issues • ${hotspot.severityLabel}',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: hotspot.color.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${hotspot.hotspotScore.toInt()}',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -509,13 +1163,24 @@ class _AdminWorkersTabState extends State<_AdminWorkersTab>
           ),
           child: TabBar(
             controller: _tabController,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
             indicator: BoxDecoration(
               color: const Color(0xFF1976D2),
               borderRadius: BorderRadius.circular(12),
             ),
+            splashFactory: NoSplash.splashFactory,
+            overlayColor: WidgetStateProperty.all(Colors.transparent),
             labelColor: Colors.white,
             unselectedLabelColor: Colors.grey[600],
-            labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            labelStyle: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+            unselectedLabelStyle: GoogleFonts.poppins(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
             tabs: [
               Tab(text: 'Pending (${_pendingWorkers.length})'),
               Tab(text: 'All (${_allWorkers.length})'),
@@ -813,13 +1478,24 @@ class _AdminSupervisorsTabState extends State<_AdminSupervisorsTab>
           ),
           child: TabBar(
             controller: _tabController,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
             indicator: BoxDecoration(
               color: const Color(0xFF1976D2),
               borderRadius: BorderRadius.circular(12),
             ),
+            splashFactory: NoSplash.splashFactory,
+            overlayColor: WidgetStateProperty.all(Colors.transparent),
             labelColor: Colors.white,
             unselectedLabelColor: Colors.grey[600],
-            labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            labelStyle: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+            unselectedLabelStyle: GoogleFonts.poppins(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
             tabs: [
               Tab(text: 'Pending (${_pendingSupervisors.length})'),
               Tab(text: 'All (${_allSupervisors.length})'),

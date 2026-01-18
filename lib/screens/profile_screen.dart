@@ -6,6 +6,10 @@ import '../services/localization_service.dart';
 import '../widgets/lottie_loader.dart';
 import 'discover.dart';
 import 'help.dart';
+import 'about.dart';
+import 'privacy_policy.dart';
+import 'terms_and_service.dart';
+import 'send_feedback.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -645,16 +649,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         ),
         const _CardDivider(),
-        _SupportRow(icon: Icons.info_outline, label: 'About NagarSetu'),
+        _SupportRow(
+          icon: Icons.info_outline,
+          label: 'About NagarSetu',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AboutScreen()),
+            );
+          },
+        ),
         const _CardDivider(),
-        _SupportRow(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy'),
+        _SupportRow(
+          icon: Icons.privacy_tip_outlined,
+          label: 'Privacy Policy',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+            );
+          },
+        ),
         const _CardDivider(),
         _SupportRow(
           icon: Icons.description_outlined,
           label: 'Terms of Service',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
+            );
+          },
         ),
         const _CardDivider(),
-        _SupportRow(icon: Icons.feedback_outlined, label: 'Send Feedback'),
+        _SupportRow(
+          icon: Icons.feedback_outlined,
+          label: 'Send Feedback',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SendFeedbackScreen()),
+            );
+          },
+        ),
       ],
     );
   }

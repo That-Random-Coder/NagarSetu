@@ -822,6 +822,166 @@ class IssueService {
       );
     }
   }
+
+  /// Get issue map data for worker
+  /// Uses /api/issue/map/worker endpoint
+  static Future<ApiResult<List<IssueMapModel>>> getIssueMapForWorker(
+    String workerId,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.getIssueMapWorkerEndpoint}',
+      ).replace(queryParameters: {'workerId': workerId});
+
+      _log('GET ISSUE MAP WORKER REQUEST: $uri');
+
+      final headers = await _getHeaders();
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'GET ISSUE MAP WORKER RESPONSE: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final issues = data
+            .map((json) => IssueMapModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return ApiResult(success: true, data: issues);
+      } else if (response.statusCode == 204) {
+        return ApiResult(success: true, data: []);
+      } else {
+        final error = _parseError(response.body);
+        return ApiResult(success: false, message: error);
+      }
+    } on SocketException catch (e) {
+      _log('Network error in getIssueMapForWorker: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getIssueMapForWorker: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
+    } catch (e) {
+      _log('GET ISSUE MAP WORKER ERROR: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to load issue map data. Please try again.',
+      );
+    }
+  }
+
+  /// Get issue map data for supervisor
+  /// Uses /api/issue/map/supervisor endpoint
+  static Future<ApiResult<List<IssueMapModel>>> getIssueMapForSupervisor(
+    String supervisorId,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.getIssueMapSupervisorEndpoint}',
+      ).replace(queryParameters: {'supervisorId': supervisorId});
+
+      _log('GET ISSUE MAP SUPERVISOR REQUEST: $uri');
+
+      final headers = await _getHeaders();
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'GET ISSUE MAP SUPERVISOR RESPONSE: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final issues = data
+            .map((json) => IssueMapModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return ApiResult(success: true, data: issues);
+      } else if (response.statusCode == 204) {
+        return ApiResult(success: true, data: []);
+      } else {
+        final error = _parseError(response.body);
+        return ApiResult(success: false, message: error);
+      }
+    } on SocketException catch (e) {
+      _log('Network error in getIssueMapForSupervisor: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getIssueMapForSupervisor: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
+    } catch (e) {
+      _log('GET ISSUE MAP SUPERVISOR ERROR: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to load issue map data. Please try again.',
+      );
+    }
+  }
+
+  /// Get issue map data for admin (all issues)
+  /// Uses /api/issue/map/admin endpoint
+  static Future<ApiResult<List<IssueMapModel>>> getIssueMapForAdmin() async {
+    try {
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.getIssueMapAdminEndpoint}',
+      );
+
+      _log('GET ISSUE MAP ADMIN REQUEST: $uri');
+
+      final headers = await _getHeaders();
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'GET ISSUE MAP ADMIN RESPONSE: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final issues = data
+            .map((json) => IssueMapModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return ApiResult(success: true, data: issues);
+      } else if (response.statusCode == 204) {
+        return ApiResult(success: true, data: []);
+      } else {
+        final error = _parseError(response.body);
+        return ApiResult(success: false, message: error);
+      }
+    } on SocketException catch (e) {
+      _log('Network error in getIssueMapForAdmin: $e');
+      return ApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException catch (e) {
+      _log('SSL error in getIssueMapForAdmin: $e');
+      return ApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
+    } catch (e) {
+      _log('GET ISSUE MAP ADMIN ERROR: $e');
+      return ApiResult(
+        success: false,
+        message: 'Failed to load issue map data. Please try again.',
+      );
+    }
+  }
 }
 
 class ApiResult<T> {
