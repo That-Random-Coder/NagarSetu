@@ -44,8 +44,9 @@ class SupervisorService {
     required String password,
   }) async {
     try {
+      // Use unified authentication endpoint (API only has one login endpoint)
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.supervisorLoginEndpoint}',
+        '${Environment.apiBaseUrl}${Environment.loginEndpoint}',
       );
 
       _log('SUPERVISOR LOGIN REQUEST: $uri');
@@ -120,8 +121,9 @@ class SupervisorService {
     double? longitude,
   }) async {
     try {
+      // Use unified authentication endpoint (API only has one registration endpoint)
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.supervisorRegisterEndpoint}',
+        '${Environment.apiBaseUrl}${Environment.registerEndpoint}',
       );
 
       final body = {
@@ -199,8 +201,9 @@ class SupervisorService {
     String roles = 'SUPERVISOR',
   }) async {
     try {
+      // Use unified authentication endpoint (API only has one getCode endpoint)
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.supervisorGetCodeEndpoint}?email=$email&roles=$roles',
+        '${Environment.apiBaseUrl}${Environment.getCodeEndpoint}?email=$email&roles=$roles',
       );
 
       _log('SUPERVISOR GET CODE REQUEST: $uri');
@@ -295,44 +298,41 @@ class SupervisorService {
     }
   }
 
-  /// Filter supervisors by department
-  static Future<SupervisorApiResult<List<SupervisorProfile>>>
-  filterSupervisors({String? department}) async {
+  /// Filter issues by location and stage for supervisor map view
+  /// API: GET /api/supervisior/filter?location={location}&stage={stage}
+  static Future<SupervisorApiResult<List<SupervisorMapIssue>>> filterIssues({
+    required String location,
+    required String stage,
+  }) async {
     try {
-      var uri = Uri.parse(
+      final uri = Uri.parse(
         '${Environment.apiBaseUrl}${Environment.supervisorFilterEndpoint}',
-      );
+      ).replace(queryParameters: {'location': location, 'stage': stage});
 
-      if (department != null) {
-        uri = uri.replace(queryParameters: {'department': department});
-      }
-
-      _log('FILTER SUPERVISORS REQUEST: $uri');
+      _log('FILTER ISSUES REQUEST: $uri');
 
       final headers = await _authHeaders;
       final response = await _client
           .get(uri, headers: headers)
           .timeout(Duration(seconds: Environment.requestTimeout));
 
-      _log(
-        'FILTER SUPERVISORS RESPONSE: ${response.statusCode} - ${response.body}',
-      );
+      _log('FILTER ISSUES RESPONSE: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         List<dynamic> list = data is List ? data : (data['content'] ?? []);
-        final supervisors = list
+        final issues = list
             .map(
               (json) =>
-                  SupervisorProfile.fromJson(json as Map<String, dynamic>),
+                  SupervisorMapIssue.fromJson(json as Map<String, dynamic>),
             )
             .toList();
-        return SupervisorApiResult(success: true, data: supervisors);
+        return SupervisorApiResult(success: true, data: issues);
       } else {
         final errorMsg = _parseErrorMessage(response.body);
         return SupervisorApiResult(
           success: false,
-          message: errorMsg ?? 'Failed to load supervisors.',
+          message: errorMsg ?? 'Failed to load issues.',
         );
       }
     } on SocketException {
@@ -346,7 +346,7 @@ class SupervisorService {
         message: 'Connection security error. Please try again.',
       );
     } catch (e) {
-      _log('FILTER SUPERVISORS ERROR: $e');
+      _log('FILTER ISSUES ERROR: $e');
       return SupervisorApiResult(
         success: false,
         message: 'An error occurred. Please try again.',

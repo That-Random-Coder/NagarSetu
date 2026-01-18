@@ -1,5 +1,6 @@
 /// Supervisor login response model
-/// Contains additional 'started' field for admin approval status
+/// Note: API unified login returns id, email, fullName, token
+/// started field may not be present, defaults to false (pending approval)
 class SupervisorLoginResponse {
   final String id;
   final String email;
@@ -21,12 +22,15 @@ class SupervisorLoginResponse {
       email: json['email']?.toString() ?? '',
       fullName: json['fullName']?.toString() ?? '',
       token: json['token']?.toString() ?? '',
+      // API may not return started, default to false (pending approval)
       started: json['started'] == true,
     );
   }
 }
 
 /// Supervisor registration response model
+/// Note: API unified registration only returns id and token
+/// started and roles are handled with default values
 class SupervisorRegisterResponse {
   final String id;
   final String token;
@@ -44,7 +48,9 @@ class SupervisorRegisterResponse {
     return SupervisorRegisterResponse(
       id: json['id']?.toString() ?? '',
       token: json['token']?.toString() ?? '',
+      // API may not return roles, default to SUPERVISOR
       roles: json['roles']?.toString() ?? 'SUPERVISOR',
+      // API may not return started, default to false (pending approval)
       started: json['started'] == true,
     );
   }
@@ -249,4 +255,108 @@ class SupervisorIssue {
   /// Check if issue is assigned to a worker
   bool get isAssigned =>
       assignedWorkerId != null && assignedWorkerId!.isNotEmpty;
+}
+
+/// Issue model for supervisor map view (from filter endpoint)
+/// Matches the IssueByMap schema from the API
+class SupervisorMapIssue {
+  final String id;
+  final double latitude;
+  final double longitude;
+  final String criticality; // LOW, MEDIUM, HIGH
+  final String
+  stages; // PENDING, ACKNOWLEDGED, TEAM_ASSIGNED, IN_PROGRESS, RESOLVED, RECONSIDERED
+  final String issueType; // ROAD, WATER, GARBAGE, VEHICLE, STREETLIGHT, OTHER
+
+  SupervisorMapIssue({
+    required this.id,
+    required this.latitude,
+    required this.longitude,
+    required this.criticality,
+    required this.stages,
+    required this.issueType,
+  });
+
+  factory SupervisorMapIssue.fromJson(Map<String, dynamic> json) {
+    return SupervisorMapIssue(
+      id: json['id']?.toString() ?? '',
+      latitude: _parseDouble(json['latitude']),
+      longitude: _parseDouble(json['longitude']),
+      criticality: json['criticality']?.toString() ?? 'MEDIUM',
+      stages: json['stages']?.toString() ?? 'PENDING',
+      issueType: json['issueType']?.toString() ?? 'OTHER',
+    );
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0.0;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'latitude': latitude,
+      'longitude': longitude,
+      'criticality': criticality,
+      'stages': stages,
+      'issueType': issueType,
+    };
+  }
+
+  /// Returns a user-friendly status string from the stages enum
+  String get statusDisplay {
+    switch (stages.toUpperCase()) {
+      case 'PENDING':
+        return 'Pending';
+      case 'ACKNOWLEDGED':
+        return 'Acknowledged';
+      case 'TEAM_ASSIGNED':
+        return 'Team Assigned';
+      case 'IN_PROGRESS':
+        return 'In Progress';
+      case 'RESOLVED':
+        return 'Resolved';
+      case 'RECONSIDERED':
+        return 'Reconsidered';
+      default:
+        return stages;
+    }
+  }
+
+  /// Returns a user-friendly issue type string
+  String get issueTypeDisplay {
+    switch (issueType.toUpperCase()) {
+      case 'ROAD':
+        return 'Road';
+      case 'WATER':
+        return 'Water';
+      case 'GARBAGE':
+        return 'Garbage';
+      case 'VEHICLE':
+        return 'Vehicle';
+      case 'STREETLIGHT':
+        return 'Streetlight';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return issueType;
+    }
+  }
+
+  /// Returns a user-friendly criticality string
+  String get criticalityDisplay {
+    switch (criticality.toUpperCase()) {
+      case 'LOW':
+        return 'Low';
+      case 'MEDIUM':
+        return 'Medium';
+      case 'HIGH':
+        return 'High';
+      default:
+        return criticality;
+    }
+  }
 }

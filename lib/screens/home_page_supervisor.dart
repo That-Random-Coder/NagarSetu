@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'supervisor_issue.dart'; // Import for navigation
+import 'supervisor_map_screen.dart'; // Import for map
 import '../services/supervisor_service.dart';
 import '../services/secure_storage_service.dart';
 import '../models/supervisor_models.dart';
@@ -888,111 +889,9 @@ class _AdminMapTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          height: double.infinity,
-          color: const Color(0xFFE3F2FD),
-          child: Stack(
-            children: [
-              Positioned(
-                top: 100,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 20,
-                  color: Colors.white.withOpacity(0.5),
-                ),
-              ),
-              Positioned(
-                top: 300,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 20,
-                  color: Colors.white.withOpacity(0.5),
-                ),
-              ),
-              Positioned(
-                top: 0,
-                bottom: 0,
-                left: 150,
-                child: Container(
-                  width: 20,
-                  color: Colors.white.withOpacity(0.5),
-                ),
-              ),
-              _buildClusterMarker(100, 80, "12", Colors.orange),
-              _buildClusterMarker(250, 200, "5", Colors.red),
-              _buildClusterMarker(400, 120, "8", Colors.blue),
-            ],
-          ),
-        ),
-        Positioned(
-          left: 20,
-          right: 20,
-          bottom: 20,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 15)],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.local_fire_department_rounded,
-                    color: Colors.red,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "Hotspot Detected",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    Text(
-                      "Sector 5 • 8 Critical Issues",
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
+    // Use the full-featured SupervisorMapScreen with filter capabilities
+    return const SupervisorMapScreen();
   }
-
-  Widget _buildClusterMarker(double t, double l, String c, Color col) =>
-      Positioned(
-        top: t,
-        left: l,
-        child: CircleAvatar(
-          backgroundColor: col,
-          radius: 20,
-          child: Text(c, style: const TextStyle(color: Colors.white)),
-        ),
-      );
 }
 
 // ---------------------------------------------------------------------------

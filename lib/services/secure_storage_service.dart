@@ -18,6 +18,7 @@ class SecureStorageService {
   static const String _isWorkerKey = 'is_worker';
   static const String _workerStartedKey = 'worker_started';
   static const String _userRoleKey = 'user_role';
+  static const String _userLocationKey = 'user_location';
 
   /// Save authentication token
   static Future<void> saveToken(String token) async {
@@ -110,6 +111,16 @@ class SecureStorageService {
   /// Get stored user role
   static Future<String?> getUserRole() async {
     return await _storage.read(key: _userRoleKey);
+  }
+
+  /// Save user location (city/area name)
+  static Future<void> saveUserLocation(String location) async {
+    await _storage.write(key: _userLocationKey, value: location);
+  }
+
+  /// Get stored user location
+  static Future<String?> getUserLocation() async {
+    return await _storage.read(key: _userLocationKey);
   }
 
   /// Save all user data after successful login
