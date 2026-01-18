@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../config/environment.dart';
 import '../models/admin_models.dart';
+import '../models/daily_stats_model.dart';
 import 'secure_storage_service.dart';
 
 /// Generic API response wrapper for Admin operations
@@ -481,6 +482,65 @@ class AdminService {
       return AdminApiResult(
         success: false,
         message: 'An error occurred. Please try again.',
+      );
+    }
+  }
+
+  // ============================================================
+  // STATISTICS ENDPOINTS
+  // ============================================================
+
+  /// Get 30 days issue statistics for admin dashboard charts
+  /// Uses /api/admin/issues/stats/30days endpoint
+  static Future<AdminApiResult<List<DailyStats>>> get30DaysStats() async {
+    try {
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.get30DaysStatsEndpoint}',
+      );
+
+      _log('GET 30 DAYS STATS REQUEST: $uri');
+
+      final headers = await _authHeaders;
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'GET 30 DAYS STATS RESPONSE: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        // API returns: {"created":[{"count":3,"date":"2026-01-18"}],"resolved":[]}
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final monthlyResponse = MonthlyStatsResponse.fromJson(data);
+        final stats = monthlyResponse.toDailyStats();
+
+        return AdminApiResult(success: true, data: stats);
+      } else if (response.statusCode == 204) {
+        // No content - empty list
+        return AdminApiResult(success: true, data: []);
+      } else {
+        final errorMsg = _parseErrorMessage(response.body);
+        return AdminApiResult(
+          success: false,
+          message: errorMsg ?? 'Failed to load statistics.',
+        );
+      }
+    } on SocketException {
+      return AdminApiResult(
+        success: false,
+        message: 'No internet connection. Please check your network.',
+      );
+    } on HandshakeException {
+      return AdminApiResult(
+        success: false,
+        message: 'Connection security error. Please try again.',
+      );
+    } catch (e) {
+      _log('GET 30 DAYS STATS ERROR: $e');
+      return AdminApiResult(
+        success: false,
+        message: 'Failed to load statistics. Please try again.',
       );
     }
   }

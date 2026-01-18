@@ -6,7 +6,7 @@ class Environment {
   /// Base URL for the API server
   /// Change this for different environments (dev, staging, production)
   static const String apiBaseUrl =
-      'https://mirror-incomplete-active-hardware.trycloudflare.com';
+      'https://privacy-quote-insured-malpractice.trycloudflare.com';
 
   /// API endpoints
   static const String apiVersion = '/api';
@@ -62,6 +62,8 @@ class Environment {
   static const String getRecentIssuesEndpoint = '$issueEndpoint/recent';
   static const String getWeeklyStatsEndpoint =
       '$issueEndpoint/stats/weekly/stages';
+  static const String get30DaysStatsEndpoint =
+      '$adminEndpoint/issues/stats/30days';
   static const String getIssueMapWorkerEndpoint = '$issueEndpoint/map/worker';
   static const String getIssueMapSupervisorEndpoint =
       '$issueEndpoint/map/supervisor';

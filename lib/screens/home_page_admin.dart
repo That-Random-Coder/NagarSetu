@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../services/admin_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/user_service.dart';
@@ -10,6 +11,7 @@ import '../models/leaderboard_entry.dart';
 import '../models/weekly_stats_model.dart';
 import '../models/issue_map_model.dart';
 import '../models/hotspot_model.dart';
+import '../models/daily_stats_model.dart';
 import 'login.dart';
 import 'admin_map_screen.dart';
 import 'admin_hotspots_screen.dart';
@@ -122,6 +124,12 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
   List<HotspotModel> _hotspots = [];
   Map<String, dynamic> _hotspotSummary = {};
 
+  // 30 Days Chart data
+  bool _isLoadingChartData = true;
+  List<DailyStats> _dailyStats = [];
+  MonthlyStatsSummary? _monthSummary;
+  int _selectedChartType = 0; // 0 = Line, 1 = Bar, 2 = Area
+
   @override
   void initState() {
     super.initState();
@@ -129,6 +137,7 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
     _loadLeaderboard();
     _loadWeeklyStats();
     _loadHotspots();
+    _load30DaysStats();
   }
 
   Future<void> _loadDashboardData() async {
@@ -189,12 +198,27 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
     }
   }
 
+  Future<void> _load30DaysStats() async {
+    setState(() => _isLoadingChartData = true);
+    final result = await AdminService.get30DaysStats();
+    if (mounted) {
+      setState(() {
+        if (result.success && result.data != null) {
+          _dailyStats = result.data!;
+          _monthSummary = MonthlyStatsSummary.fromDailyStats(_dailyStats);
+        }
+        _isLoadingChartData = false;
+      });
+    }
+  }
+
   Future<void> _refreshAll() async {
     await Future.wait([
       _loadDashboardData(),
       _loadLeaderboard(),
       _loadWeeklyStats(),
       _loadHotspots(),
+      _load30DaysStats(),
     ]);
   }
 
@@ -308,6 +332,11 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
 
             // Weekly Stats Section
             _buildWeeklyStatsSection(),
+
+            const SizedBox(height: 24),
+
+            // 30 Days Analytics Chart
+            _build30DaysChartSection(),
 
             const SizedBox(height: 24),
 
@@ -911,6 +940,545 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
         ],
       ),
     );
+  }
+
+  // 30 Days Analytics Chart Section
+  Widget _build30DaysChartSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.insights_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '30 Days Analytics',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Issue workflow overview',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Chart Type Toggle
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildChartTypeButton(0, Icons.show_chart_rounded, 'Line'),
+                    _buildChartTypeButton(1, Icons.bar_chart_rounded, 'Bar'),
+                    _buildChartTypeButton(2, Icons.area_chart_rounded, 'Area'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Summary Stats Row
+          if (_monthSummary != null && !_isLoadingChartData)
+            _buildChartSummaryRow(),
+
+          const SizedBox(height: 20),
+
+          // Chart
+          SizedBox(
+            height: 220,
+            child: _isLoadingChartData
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF1976D2)),
+                  )
+                : _dailyStats.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.analytics_outlined,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No data available',
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : _buildChart(),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Legend
+          if (!_isLoadingChartData && _dailyStats.isNotEmpty)
+            _buildChartLegend(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartTypeButton(int index, IconData icon, String label) {
+    final isSelected = _selectedChartType == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedChartType = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1976D2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isSelected ? Colors.white : Colors.grey[600],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartSummaryRow() {
+    return Row(
+      children: [
+        _buildSummaryItem(
+          'Created',
+          _monthSummary!.totalCreated.toString(),
+          const Color(0xFF1976D2),
+          Icons.assignment_rounded,
+        ),
+        _buildSummaryItem(
+          'Resolved',
+          _monthSummary!.totalResolved.toString(),
+          const Color(0xFF43A047),
+          Icons.check_circle_rounded,
+        ),
+        _buildSummaryItem(
+          'Pending',
+          _monthSummary!.pendingIssues.toString(),
+          const Color(0xFFE53935),
+          Icons.pending_rounded,
+        ),
+        _buildSummaryItem(
+          'Resolution',
+          '${_monthSummary!.resolutionRate.toStringAsFixed(0)}%',
+          const Color(0xFFFF9800),
+          Icons.trending_up_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryItem(
+    String label,
+    String value,
+    Color color,
+    IconData icon,
+  ) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.poppins(fontSize: 9, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChart() {
+    switch (_selectedChartType) {
+      case 0:
+        return _buildLineChart();
+      case 1:
+        return _buildBarChart();
+      case 2:
+        return _buildAreaChart();
+      default:
+        return _buildLineChart();
+    }
+  }
+
+  Widget _buildLineChart() {
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: _getMaxY() / 5,
+          getDrawingHorizontalLine: (value) =>
+              FlLine(color: Colors.grey[200]!, strokeWidth: 1),
+        ),
+        titlesData: _buildTitlesData(),
+        borderData: FlBorderData(show: false),
+        minX: 0,
+        maxX: (_dailyStats.length - 1).toDouble(),
+        minY: 0,
+        maxY: _getMaxY(),
+        lineTouchData: LineTouchData(
+          enabled: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                final dayIndex = spot.x.toInt();
+                if (dayIndex < 0 || dayIndex >= _dailyStats.length) return null;
+                final day = _dailyStats[dayIndex];
+                final stageName = _getStageNameFromLineIndex(spot.barIndex);
+                return LineTooltipItem(
+                  '${day.formattedDate}\n$stageName: ${spot.y.toInt()}',
+                  GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
+        lineBarsData: [
+          _buildLineChartBarData('created', const Color(0xFF1976D2)),
+          _buildLineChartBarData('resolved', const Color(0xFF43A047)),
+        ],
+      ),
+    );
+  }
+
+  LineChartBarData _buildLineChartBarData(String stage, Color color) {
+    return LineChartBarData(
+      spots: _dailyStats.asMap().entries.map((e) {
+        final value = _getStageValue(e.value, stage);
+        return FlSpot(e.key.toDouble(), value.toDouble());
+      }).toList(),
+      isCurved: true,
+      curveSmoothness: 0.3,
+      color: color,
+      barWidth: 2.5,
+      isStrokeCapRound: true,
+      dotData: FlDotData(
+        show: true,
+        getDotPainter: (spot, percent, barData, index) {
+          return FlDotCirclePainter(
+            radius: 3,
+            color: color,
+            strokeWidth: 1,
+            strokeColor: Colors.white,
+          );
+        },
+      ),
+      belowBarData: BarAreaData(show: false),
+    );
+  }
+
+  Widget _buildBarChart() {
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _getMaxY(),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              if (groupIndex < 0 || groupIndex >= _dailyStats.length)
+                return null;
+              final day = _dailyStats[groupIndex];
+              return BarTooltipItem(
+                '${day.formattedDate}\nCreated: ${day.created}',
+                GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              );
+            },
+          ),
+        ),
+        titlesData: _buildTitlesData(),
+        borderData: FlBorderData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: _getMaxY() / 5,
+          getDrawingHorizontalLine: (value) =>
+              FlLine(color: Colors.grey[200]!, strokeWidth: 1),
+        ),
+        barGroups: _dailyStats.asMap().entries.map((e) {
+          final stats = e.value;
+          return BarChartGroupData(
+            x: e.key,
+            barRods: [
+              BarChartRodData(
+                toY: stats.created.toDouble(),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+                width: _dailyStats.length > 15 ? 6 : 10,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildAreaChart() {
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: _getMaxY() / 5,
+          getDrawingHorizontalLine: (value) =>
+              FlLine(color: Colors.grey[200]!, strokeWidth: 1),
+        ),
+        titlesData: _buildTitlesData(),
+        borderData: FlBorderData(show: false),
+        minX: 0,
+        maxX: (_dailyStats.length - 1).toDouble(),
+        minY: 0,
+        maxY: _getMaxY(),
+        lineTouchData: LineTouchData(
+          enabled: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                final dayIndex = spot.x.toInt();
+                if (dayIndex < 0 || dayIndex >= _dailyStats.length) return null;
+                final day = _dailyStats[dayIndex];
+                return LineTooltipItem(
+                  '${day.formattedDate}\nCreated: ${day.created}',
+                  GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: _dailyStats.asMap().entries.map((e) {
+              return FlSpot(e.key.toDouble(), e.value.created.toDouble());
+            }).toList(),
+            isCurved: true,
+            curveSmoothness: 0.3,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+            ),
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF1976D2).withOpacity(0.3),
+                  const Color(0xFF42A5F5).withOpacity(0.05),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  FlTitlesData _buildTitlesData() {
+    return FlTitlesData(
+      show: true,
+      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 30,
+          interval: _dailyStats.length > 15 ? 7 : 5,
+          getTitlesWidget: (value, meta) {
+            final index = value.toInt();
+            if (index < 0 || index >= _dailyStats.length) {
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _dailyStats[index].formattedDate,
+                style: GoogleFonts.poppins(
+                  color: Colors.grey[600],
+                  fontSize: 9,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      leftTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 35,
+          interval: _getMaxY() / 5,
+          getTitlesWidget: (value, meta) {
+            return Text(
+              value.toInt().toString(),
+              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 10),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartLegend() {
+    final legends = [
+      {'name': 'Created', 'color': const Color(0xFF1976D2)},
+      {'name': 'Resolved', 'color': const Color(0xFF43A047)},
+    ];
+
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: legends.map((legend) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: legend['color'] as Color,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              legend['name'] as String,
+              style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[700]),
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  double _getMaxY() {
+    if (_dailyStats.isEmpty) return 10;
+    int max = 1;
+    for (final day in _dailyStats) {
+      if (day.created > max) max = day.created;
+      if (day.resolved > max) max = day.resolved;
+    }
+    return (max * 1.2).ceilToDouble();
+  }
+
+  int _getStageValue(DailyStats stats, String stage) {
+    switch (stage) {
+      case 'created':
+        return stats.created;
+      case 'resolved':
+        return stats.resolved;
+      default:
+        return 0;
+    }
+  }
+
+  String _getStageNameFromLineIndex(int index) {
+    switch (index) {
+      case 0:
+        return 'Created';
+      case 1:
+        return 'Resolved';
+      default:
+        return '';
+    }
   }
 
   Widget _buildStatCard(

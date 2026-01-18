@@ -2,18 +2,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../services/issue_service.dart';
 import 'in_app_camera.dart'; // Import your custom camera
 
 class UpdateWorkPage extends StatefulWidget {
   final String taskTitle;
   final String taskAddress;
   final String currentStatus;
+  final String? issueId;
 
   const UpdateWorkPage({
     super.key,
     required this.taskTitle,
     required this.taskAddress,
     required this.currentStatus,
+    this.issueId,
   });
 
   @override
@@ -23,10 +26,10 @@ class UpdateWorkPage extends StatefulWidget {
 class _UpdateWorkPageState extends State<UpdateWorkPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _remarksController = TextEditingController();
-  
+
   String? _selectedStatus;
   File? _selectedImage;
-  
+
   // Theme Color
   final Color _primaryColor = const Color(0xFF1976D2);
 
@@ -34,15 +37,15 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
     "Pending",
     "In Progress",
     "Resolved",
-    "On Hold"
+    "On Hold",
   ];
 
   @override
   void initState() {
     super.initState();
     // Set initial status based on passed data, or default to first option
-    _selectedStatus = _statusOptions.contains(widget.currentStatus) 
-        ? widget.currentStatus 
+    _selectedStatus = _statusOptions.contains(widget.currentStatus)
+        ? widget.currentStatus
         : _statusOptions[0];
   }
 
@@ -56,17 +59,15 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
   Future<void> _pickImage() async {
     // Request Camera Permission directly
     final status = await Permission.camera.request();
-    
+
     if (status.isGranted) {
       // Navigate directly to InAppCameraScreen
       // (Your custom camera screen already has a gallery picker button inside it)
       final result = await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const InAppCameraScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const InAppCameraScreen()),
       );
-      
+
       if (result != null && result is File) {
         setState(() {
           _selectedImage = result;
@@ -103,9 +104,10 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
     );
   }
 
-  void _submitUpdate() {
+  bool _isSubmitting = false;
+
+  Future<void> _submitUpdate() async {
     if (_formKey.currentState!.validate()) {
-      
       // Validation: Proof is required if Status is "Resolved"
       // Proof is NOT required if Status is "Pending" (or In Progress/On Hold)
       if (_selectedStatus == 'Resolved' && _selectedImage == null) {
@@ -119,19 +121,54 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
         return;
       }
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Work status updated successfully!"),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      
-      // Simulate network delay then go back
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) Navigator.pop(context);
-      });
+      // If resolving an issue, call the API
+      if (_selectedStatus == 'Resolved' &&
+          widget.issueId != null &&
+          _selectedImage != null) {
+        setState(() => _isSubmitting = true);
+
+        final result = await IssueService.markIssueDone(
+          issueId: widget.issueId!,
+          completionImage: _selectedImage!,
+        );
+
+        if (!mounted) return;
+
+        setState(() => _isSubmitting = false);
+
+        if (result.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Issue marked as resolved successfully!"),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context, true); // Return true to indicate success
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result.message ?? "Failed to update issue. Please try again.",
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        // For non-resolve status updates (not yet implemented in API)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Status update recorded."),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) Navigator.pop(context);
+        });
+      }
     }
   }
 
@@ -145,13 +182,21 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
       appBar: AppBar(
         title: const Text(
           "Update Status",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Poppins',
+          ),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -170,7 +215,11 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: Column(
@@ -178,30 +227,52 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                   children: [
                     Text(
                       widget.taskTitle,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Poppins',
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined, color: Colors.grey[600], size: 16),
+                        Icon(
+                          Icons.location_on_outlined,
+                          color: Colors.grey[600],
+                          size: 16,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           widget.taskAddress,
-                          style: TextStyle(color: Colors.grey[600], fontSize: 14, fontFamily: 'Poppins'),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                            fontFamily: 'Poppins',
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              const Text("Work Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+              const Text(
+                "Work Details",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Poppins',
+                ),
+              ),
               const SizedBox(height: 12),
 
               // --- Status Dropdown ---
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -215,7 +286,10 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                     items: _statusOptions.map((String status) {
                       return DropdownMenuItem<String>(
                         value: status,
-                        child: Text(status, style: const TextStyle(fontFamily: 'Poppins')),
+                        child: Text(
+                          status,
+                          style: const TextStyle(fontFamily: 'Poppins'),
+                        ),
                       );
                     }).toList(),
                     onChanged: (newValue) {
@@ -235,14 +309,21 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                 maxLines: 4,
                 decoration: InputDecoration(
                   hintText: "Add remarks about the work done...",
-                  hintStyle: TextStyle(color: Colors.grey[400], fontFamily: 'Poppins'),
+                  hintStyle: TextStyle(
+                    color: Colors.grey[400],
+                    fontFamily: 'Poppins',
+                  ),
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                   contentPadding: const EdgeInsets.all(16),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter some remarks';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter some remarks';
                   return null;
                 },
               ),
@@ -250,9 +331,22 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  const Text("Proof of Work", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                  if (isProofRequired) 
-                    const Text(" *", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Proof of Work",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                  if (isProofRequired)
+                    const Text(
+                      " *",
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -266,7 +360,10 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.withOpacity(0.3), style: BorderStyle.solid),
+                    border: Border.all(
+                      color: Colors.blue.withOpacity(0.3),
+                      style: BorderStyle.solid,
+                    ),
                   ),
                   child: _selectedImage != null
                       ? ClipRRect(
@@ -296,7 +393,11 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                                       color: Colors.red,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                    child: const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -306,20 +407,31 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.camera_alt_outlined, size: 32, color: _primaryColor),
+                            Icon(
+                              Icons.camera_alt_outlined,
+                              size: 32,
+                              color: _primaryColor,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               "Tap to upload photo",
-                              style: TextStyle(color: _primaryColor, fontWeight: FontWeight.w500, fontFamily: 'Poppins'),
+                              style: TextStyle(
+                                color: _primaryColor,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'Poppins',
+                              ),
                             ),
                             if (!isProofRequired)
-                               Padding(
-                                 padding: const EdgeInsets.only(top: 4.0),
-                                 child: Text(
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
                                   "(Optional for Pending)",
-                                  style: TextStyle(fontSize: 12, color: _primaryColor.withOpacity(0.7)),
-                                                             ),
-                               ),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _primaryColor.withOpacity(0.7),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                 ),
@@ -332,17 +444,32 @@ class _UpdateWorkPageState extends State<UpdateWorkPage> {
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: _submitUpdate,
+                  onPressed: _isSubmitting ? null : _submitUpdate,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryColor,
                     foregroundColor: Colors.white,
                     elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text(
-                    "Submit Update",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          "Submit Update",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
                 ),
               ),
               SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
