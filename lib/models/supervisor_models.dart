@@ -117,12 +117,14 @@ class AssignableWorker {
   factory AssignableWorker.fromJson(Map<String, dynamic> json) {
     return AssignableWorker(
       id: json['id']?.toString() ?? '',
-      username: json['username']?.toString() ?? '',
+      username:
+          json['fullName']?.toString() ?? json['username']?.toString() ?? '',
       department: json['department']?.toString(),
       location: json['location']?.toString(),
-      started: json['started'] == true,
-      tasksAssigned: json['tasksAssigned'] as int? ?? 0,
-      isAvailable: json['isAvailable'] == true,
+      started: json['started'] ?? true,
+      tasksAssigned:
+          json['issueCount'] as int? ?? json['tasksAssigned'] as int? ?? 0,
+      isAvailable: json['isAvailable'] ?? true,
       currentTask: json['currentTask']?.toString(),
     );
   }

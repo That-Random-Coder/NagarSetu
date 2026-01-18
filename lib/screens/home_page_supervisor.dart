@@ -93,6 +93,7 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
   List<SupervisorIssue> _highPriorityIssues = [];
   List<SupervisorIssue> _mediumPriorityIssues = [];
   List<SupervisorIssue> _lowPriorityIssues = [];
+  Set<String> _expandedWorkerIds = {};
 
   @override
   void initState() {
@@ -109,7 +110,7 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
     if (mounted) {
       setState(() {
         if (workersResult.success && workersResult.data != null) {
-          _workers = workersResult.data!.where((w) => w.started).toList();
+          _workers = workersResult.data!;
         }
 
         if (issuesResult.success && issuesResult.data != null) {
@@ -244,12 +245,12 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
 
             if (_isLoading)
               const SizedBox(
-                height: 110,
+                height: 180,
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (_workers.isEmpty)
               Container(
-                height: 110,
+                height: 180,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
@@ -276,20 +277,14 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
               )
             else
               SizedBox(
-                height: 110,
+                height: 180,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   clipBehavior: Clip.none,
                   itemCount: _workers.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
-                    final worker = _workers[index];
-                    return _buildStaffCard(
-                      worker.username,
-                      _getWorkerStatus(worker),
-                      worker.currentTask ?? worker.location ?? 'No task',
-                      _getWorkerStatusColor(worker),
-                    );
+                    return _buildWorkerGridCard(_workers[index]);
                   },
                 ),
               ),
@@ -453,6 +448,390 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
               fontFamily: 'Poppins',
             ),
             overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandableWorkerCard(AssignableWorker worker) {
+    final isExpanded = _expandedWorkerIds.contains(worker.id);
+    final statusColor = _getWorkerStatusColor(worker);
+    final status = _getWorkerStatus(worker);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isExpanded) {
+            _expandedWorkerIds.remove(worker.id);
+          } else {
+            _expandedWorkerIds.add(worker.id);
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: isExpanded
+                ? statusColor.withOpacity(0.3)
+                : Colors.grey.shade100,
+            width: isExpanded ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: statusColor.withOpacity(0.1),
+                    child: Text(
+                      worker.username.isNotEmpty
+                          ? worker.username[0].toUpperCase()
+                          : 'W',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          worker.username,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            fontFamily: 'Poppins',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              status,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: Colors.grey[400],
+                  ),
+                ],
+              ),
+            ),
+            if (isExpanded) ...[
+              Container(height: 1, color: Colors.grey[200]),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildWorkerInfoRow(
+                      Icons.work_outline,
+                      'Current Task',
+                      worker.currentTask ?? 'No active task',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildWorkerInfoRow(
+                      Icons.location_on_outlined,
+                      'Location',
+                      worker.location ?? 'Not specified',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildWorkerInfoRow(
+                      Icons.business_outlined,
+                      'Department',
+                      worker.department ?? 'Not assigned',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildWorkerInfoRow(
+                      Icons.assignment_outlined,
+                      'Tasks Assigned',
+                      '${worker.tasksAssigned ?? 0} tasks',
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildWorkerStatusChip(
+                            worker.isAvailable ? 'Available' : 'Busy',
+                            worker.isAvailable ? Colors.green : Colors.orange,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildWorkerStatusChip(
+                            worker.started ? 'Active' : 'Inactive',
+                            worker.started ? Colors.blue : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkerInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey[500]),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[500],
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Poppins',
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkerStatusChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkerGridCard(AssignableWorker worker) {
+    final statusColor = _getWorkerStatusColor(worker);
+    final status = _getWorkerStatus(worker);
+
+    return Container(
+      width: 160,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: statusColor.withOpacity(0.15),
+                child: Text(
+                  worker.username.isNotEmpty
+                      ? worker.username[0].toUpperCase()
+                      : 'W',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  worker.username,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    fontFamily: 'Poppins',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Icon(Icons.work_outline, size: 12, color: Colors.grey[500]),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  worker.currentTask ?? 'No task',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 10,
+                    fontFamily: 'Poppins',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 12,
+                color: Colors.grey[500],
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  worker.location ?? 'Not specified',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 10,
+                    fontFamily: 'Poppins',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${worker.tasksAssigned ?? 0} tasks',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: worker.isAvailable
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  worker.isAvailable ? 'Free' : 'Busy',
+                  style: TextStyle(
+                    color: worker.isAvailable ? Colors.green : Colors.orange,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
