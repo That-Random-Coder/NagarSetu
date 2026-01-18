@@ -186,7 +186,7 @@ class _InfoScreenState extends State<InfoScreen> {
   Future<String?> _getCityFromCoordinates(double lat, double lng) async {
     try {
       final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=10&addressdetails=1',
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1',
       );
 
       final response = await http
@@ -198,16 +198,20 @@ class _InfoScreenState extends State<InfoScreen> {
         final address = data['address'] as Map<String, dynamic>?;
 
         if (address != null) {
-          // Try to get city, town, or village
-          final city =
-              address['city'] ??
-              address['town'] ??
+          // Prioritize locality/suburb for neighborhood names like Mahim, Bhandup
+          final locality =
+              address['suburb'] ??
+              address['neighbourhood'] ??
+              address['locality'] ??
               address['village'] ??
+              address['town'] ??
+              address['city_district'] ??
+              address['city'] ??
               address['municipality'] ??
               address['county'] ??
               address['state_district'] ??
               address['state'];
-          return city?.toString();
+          return locality?.toString();
         }
       }
     } catch (e) {
@@ -452,10 +456,10 @@ class _InfoScreenState extends State<InfoScreen> {
                         // Date of Birth and Gender Row
                         Row(
                           children: [
-                            Expanded(flex: 2, child: _buildDateOfBirthPicker()),
+                            Expanded(flex: 3, child: _buildDateOfBirthPicker()),
                             const SizedBox(width: 16),
                             Expanded(
-                              flex: 3,
+                              flex: 2,
                               child: DropdownButtonFormField<String>(
                                 value: _selectedGender,
                                 decoration: _inputDecoration(

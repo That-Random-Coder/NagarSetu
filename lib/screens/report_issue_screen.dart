@@ -7,10 +7,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../widgets/lottie_loader.dart';
 import '../services/ai_service.dart';
 import '../services/issue_service.dart';
-import 'package:geocoding/geocoding.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -206,30 +207,48 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     }
   }
 
+  /// Get locality/suburb name from coordinates using Nominatim (OpenStreetMap)
   Future<void> _getAddressFromCoordinates(LatLng location) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        location.latitude,
-        location.longitude,
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.latitude}&lon=${location.longitude}&zoom=18&addressdetails=1',
       );
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        final address = [
-          place.street,
-          place.subLocality,
-          place.locality,
-          place.administrativeArea,
-        ].where((s) => s != null && s.isNotEmpty).join(', ');
-        setState(() {
-          _locationAddress = address.isNotEmpty ? address : 'Unknown location';
-        });
+
+      final response = await http
+          .get(url, headers: {'User-Agent': 'NagarSetu/1.0'})
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final address = data['address'] as Map<String, dynamic>?;
+
+        if (address != null) {
+          // Prioritize locality/suburb for neighborhood names like Mahim, Bhandup
+          final locality =
+              address['suburb'] ??
+              address['neighbourhood'] ??
+              address['locality'] ??
+              address['village'] ??
+              address['town'] ??
+              address['city_district'] ??
+              address['city'] ??
+              address['municipality'] ??
+              address['county'] ??
+              address['state_district'] ??
+              address['state'];
+          setState(() {
+            _locationAddress = locality?.toString() ?? 'Unknown location';
+          });
+          return;
+        }
       }
     } catch (e) {
-      setState(() {
-        _locationAddress =
-            'Lat: ${location.latitude.toStringAsFixed(4)}, Lng: ${location.longitude.toStringAsFixed(4)}';
-      });
+      print('Geocoding error: $e');
     }
+    setState(() {
+      _locationAddress =
+          'Lat: ${location.latitude.toStringAsFixed(4)}, Lng: ${location.longitude.toStringAsFixed(4)}';
+    });
   }
 
   void _showLocationError() {
@@ -1016,6 +1035,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                       setState(() {
                         _selectedLocation = point;
                       });
+                      // Get locality name for the dropped pin location
+                      _getAddressFromCoordinates(point);
                     },
                   ),
                   children: [
