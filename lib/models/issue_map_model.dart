@@ -6,6 +6,11 @@ class IssueMapModel {
   final String
   stages; // PENDING, ACKNOWLEDGED, TEAM_ASSIGNED, IN_PROGRESS, RESOLVED, RECONSIDERED
   final String issueType; // ROAD, WATER, ELECTRICITY, GARBAGE, VEHICLE, OTHER
+  final String? title;
+  final String? description;
+  final String? location;
+  final DateTime? createdAt;
+  final String? imageUrl;
 
   IssueMapModel({
     required this.id,
@@ -14,6 +19,11 @@ class IssueMapModel {
     required this.criticality,
     required this.stages,
     required this.issueType,
+    this.title,
+    this.description,
+    this.location,
+    this.createdAt,
+    this.imageUrl,
   });
 
   factory IssueMapModel.fromJson(Map<String, dynamic> json) {
@@ -24,6 +34,15 @@ class IssueMapModel {
       criticality: json['criticality']?.toString() ?? 'MEDIUM',
       stages: json['stages']?.toString() ?? 'PENDING',
       issueType: json['issueType']?.toString() ?? 'OTHER',
+      title: json['title']?.toString(),
+      description: json['description']?.toString(),
+      location: json['location']?.toString(),
+      createdAt: json['createdAt'] != null || json['createAt'] != null
+          ? DateTime.tryParse(
+              (json['createdAt'] ?? json['createAt']).toString(),
+            )
+          : null,
+      imageUrl: json['imageUrl']?.toString(),
     );
   }
 
@@ -42,6 +61,11 @@ class IssueMapModel {
       'criticality': criticality,
       'stages': stages,
       'issueType': issueType,
+      'title': title,
+      'description': description,
+      'location': location,
+      'createdAt': createdAt?.toIso8601String(),
+      'imageUrl': imageUrl,
     };
   }
 

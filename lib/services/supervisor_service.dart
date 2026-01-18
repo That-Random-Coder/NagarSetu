@@ -29,6 +29,9 @@ class SupervisorService {
 
   static Future<Map<String, String>> get _authHeaders async {
     final token = await SecureStorageService.getToken();
+    _log(
+      'AUTH TOKEN: ${token != null ? "Present (${token.substring(0, 20)}...)" : "NULL"}',
+    );
     return {..._headers, if (token != null) 'Authorization': 'Bearer $token'};
   }
 
@@ -355,23 +358,43 @@ class SupervisorService {
   }
 
   /// Get all workers (for assignment)
+  /// Tries supervisor-specific endpoint first, falls back to admin endpoint
   static Future<SupervisorApiResult<List<AssignableWorker>>>
   getAllWorkers() async {
     try {
-      final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.adminWorkersEndpoint}',
+      final headers = await _authHeaders;
+
+      // Try supervisor-specific endpoint first
+      var uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.supervisorWorkersEndpoint}',
       );
 
-      _log('GET ALL WORKERS REQUEST: $uri');
+      _log('GET ALL WORKERS REQUEST (Supervisor): $uri');
 
-      final headers = await _authHeaders;
-      final response = await _client
+      var response = await _client
           .get(uri, headers: headers)
           .timeout(Duration(seconds: Environment.requestTimeout));
 
       _log(
-        'GET ALL WORKERS RESPONSE: ${response.statusCode} - ${response.body}',
+        'GET ALL WORKERS RESPONSE (Supervisor): ${response.statusCode} - ${response.body}',
       );
+
+      // If supervisor endpoint fails with 403 or 404, try admin endpoint
+      if (response.statusCode == 403 || response.statusCode == 404) {
+        uri = Uri.parse(
+          '${Environment.apiBaseUrl}${Environment.adminWorkersEndpoint}',
+        );
+
+        _log('GET ALL WORKERS REQUEST (Admin fallback): $uri');
+
+        response = await _client
+            .get(uri, headers: headers)
+            .timeout(Duration(seconds: Environment.requestTimeout));
+
+        _log(
+          'GET ALL WORKERS RESPONSE (Admin): ${response.statusCode} - ${response.body}',
+        );
+      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -386,7 +409,8 @@ class SupervisorService {
         final errorMsg = _parseErrorMessage(response.body);
         return SupervisorApiResult(
           success: false,
-          message: errorMsg ?? 'Failed to load workers.',
+          message:
+              errorMsg ?? 'Failed to load workers. Access may be restricted.',
         );
       }
     } on SocketException {

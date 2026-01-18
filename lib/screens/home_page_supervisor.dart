@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'supervisor_issue.dart'; // Import for navigation
-import 'supervisor_map_screen.dart'; // Import for map
+import 'supervisor_issue.dart';
+import 'supervisor_map_screen.dart';
+import 'notifications.dart';
 import '../services/supervisor_service.dart';
 import '../services/secure_storage_service.dart';
 import '../models/supervisor_models.dart';
@@ -79,166 +80,308 @@ class _AdminHomePageState extends State<AdminHomePage> {
 }
 
 // ---------------------------------------------------------------------------
-// TAB A: DASHBOARD (UPDATED LOGIC WITH SMOOTH ANIMATION)
+// TAB A: DASHBOARD (WITH API INTEGRATION)
 // ---------------------------------------------------------------------------
 
-class _AdminDashboardTab extends StatelessWidget {
+class _AdminDashboardTab extends StatefulWidget {
   const _AdminDashboardTab();
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Command Center",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                  Text(
-                    "Real-time city monitoring",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                ],
-              ),
-              CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  color: Colors.black54,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+  State<_AdminDashboardTab> createState() => _AdminDashboardTabState();
+}
 
-          // --- 1. Staff Activity Section ---
-          const Text(
-            "Staff Activity",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 110,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
+class _AdminDashboardTabState extends State<_AdminDashboardTab> {
+  bool _isLoading = true;
+  List<AssignableWorker> _workers = [];
+  List<SupervisorIssue> _allIssues = [];
+  List<SupervisorIssue> _highPriorityIssues = [];
+  List<SupervisorIssue> _mediumPriorityIssues = [];
+  List<SupervisorIssue> _lowPriorityIssues = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+
+    final workersResult = await SupervisorService.getAllWorkers();
+    final issuesResult = await SupervisorService.getRecentIssues();
+
+    if (mounted) {
+      setState(() {
+        if (workersResult.success && workersResult.data != null) {
+          _workers = workersResult.data!.where((w) => w.started).toList();
+        }
+
+        if (issuesResult.success && issuesResult.data != null) {
+          _allIssues = issuesResult.data!;
+          _highPriorityIssues = _allIssues
+              .where(
+                (i) =>
+                    i.criticality.toUpperCase() == 'HIGH' &&
+                    i.stages.toUpperCase() != 'RESOLVED',
+              )
+              .toList();
+          _mediumPriorityIssues = _allIssues
+              .where(
+                (i) =>
+                    i.criticality.toUpperCase() == 'MEDIUM' &&
+                    i.stages.toUpperCase() != 'RESOLVED',
+              )
+              .toList();
+          _lowPriorityIssues = _allIssues
+              .where(
+                (i) =>
+                    i.criticality.toUpperCase() == 'LOW' &&
+                    i.stages.toUpperCase() != 'RESOLVED',
+              )
+              .toList();
+        }
+
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshData() async {
+    await _loadDashboardData();
+  }
+
+  String _getWorkerStatus(AssignableWorker worker) {
+    if (worker.currentTask != null && worker.currentTask!.isNotEmpty) {
+      return 'Working';
+    }
+    return worker.isAvailable ? 'Available' : 'Busy';
+  }
+
+  Color _getWorkerStatusColor(AssignableWorker worker) {
+    if (worker.currentTask != null && worker.currentTask!.isNotEmpty) {
+      return Colors.orange;
+    }
+    return worker.isAvailable ? Colors.green : Colors.blue;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStaffCard(
-                  "Rajesh K.",
-                  "En Route",
-                  "Water Leak #402",
-                  Colors.blue,
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Command Center",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                      Text(
+                        "Real-time city monitoring",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 12),
-                _buildStaffCard(
-                  "Amit Singh",
-                  "Fixing",
-                  "Power Outage #991",
-                  Colors.orange,
-                ),
-                const SizedBox(width: 12),
-                _buildStaffCard(
-                  "Priya D.",
-                  "Surveying",
-                  "Road Block #112",
-                  Colors.purple,
-                ),
-                const SizedBox(width: 12),
-                _buildStaffCard(
-                  "Vikram M.",
-                  "En Route",
-                  "Drainage #332",
-                  Colors.blue,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(),
+                      ),
+                    );
+                  },
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.notifications_none_rounded,
+                      color: Colors.black54,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 24),
 
-          const SizedBox(height: 32),
-
-          // --- 2. Priority Watchlist Section ---
-          const Text(
-            "Priority Watchlist",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Poppins',
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Staff Activity",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                Text(
+                  "${_workers.length} workers",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-          // High Severity Group
-          _buildPriorityGroup("High Severity", Colors.red, [
-            {
-              "id": "CRIT-201",
-              "title": "Main Water Line Burst",
-              "location": "Sector 4, Main Rd",
-              "desc":
-                  "Major pipeline burst causing flooding in Sector 4 market area. Traffic halted.",
-              "team": ["Rajesh K.", "Sunil M.", "Amit S.", "Team B"],
-            },
-            {
-              "id": "CRIT-205",
-              "title": "Transformer Fire",
-              "location": "Industrial Area Ph-1",
-              "desc":
-                  "Fire reported at Sub-station 4. Fire brigade on site. Power cut in 3 blocks.",
-              "team": ["Vikram M.", "Fire Dept"],
-            },
-          ], context),
+            if (_isLoading)
+              const SizedBox(
+                height: 110,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_workers.isEmpty)
+              Container(
+                height: 110,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.people_outline,
+                      size: 32,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "No active workers",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                height: 110,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  itemCount: _workers.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final worker = _workers[index];
+                    return _buildStaffCard(
+                      worker.username,
+                      _getWorkerStatus(worker),
+                      worker.currentTask ?? worker.location ?? 'No task',
+                      _getWorkerStatusColor(worker),
+                    );
+                  },
+                ),
+              ),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 32),
 
-          // Medium Severity Group
-          _buildPriorityGroup("Medium Priority", Colors.orange, [
-            {
-              "id": "MED-112",
-              "title": "Traffic Light Malfunction",
-              "location": "Gandhi Chowk",
-              "desc": "All 4 lights stuck on red. Causing moderate congestion.",
-              "team": ["Traffic Police", "Tech Team A"],
-            },
-          ], context),
+            const Text(
+              "Priority Watchlist",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 20),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_highPriorityIssues.isEmpty &&
+                _mediumPriorityIssues.isEmpty &&
+                _lowPriorityIssues.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green.shade400,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "All clear!",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green.shade700,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "No pending issues at the moment",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.green.shade600,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+              if (_highPriorityIssues.isNotEmpty)
+                _buildPriorityGroup(
+                  "High Severity",
+                  Colors.red,
+                  _highPriorityIssues.take(3).toList(),
+                  context,
+                ),
+              if (_highPriorityIssues.isNotEmpty) const SizedBox(height: 20),
 
-          // Low Severity Group
-          _buildPriorityGroup("Low Priority", Colors.blue, [
-            {
-              "id": "LOW-404",
-              "title": "Park Bench Broken",
-              "location": "Central Park",
-              "desc": "Wooden bench broken near north gate.",
-              "team": ["Parks Dept"],
-            },
-          ], context),
+              if (_mediumPriorityIssues.isNotEmpty)
+                _buildPriorityGroup(
+                  "Medium Priority",
+                  Colors.orange,
+                  _mediumPriorityIssues.take(2).toList(),
+                  context,
+                ),
+              if (_mediumPriorityIssues.isNotEmpty) const SizedBox(height: 20),
 
-          const SizedBox(height: 40),
-        ],
+              if (_lowPriorityIssues.isNotEmpty)
+                _buildPriorityGroup(
+                  "Low Priority",
+                  Colors.blue,
+                  _lowPriorityIssues.take(2).toList(),
+                  context,
+                ),
+            ],
+
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }
@@ -323,7 +466,7 @@ class _AdminDashboardTab extends StatelessWidget {
   Widget _buildPriorityGroup(
     String title,
     Color color,
-    List<Map<String, dynamic>> issues,
+    List<SupervisorIssue> issues,
     BuildContext context,
   ) {
     return Column(
@@ -338,7 +481,7 @@ class _AdminDashboardTab extends StatelessWidget {
               margin: const EdgeInsets.only(right: 8),
             ),
             Text(
-              title,
+              "$title (${issues.length})",
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.bold,
@@ -354,7 +497,7 @@ class _AdminDashboardTab extends StatelessWidget {
   }
 
   Widget _buildIssueCard(
-    Map<String, dynamic> issue,
+    SupervisorIssue issue,
     Color accentColor,
     BuildContext context,
   ) {
@@ -386,21 +529,23 @@ class _AdminDashboardTab extends StatelessWidget {
           ),
         ),
         title: Text(
-          issue['title'],
+          issue.title.isNotEmpty ? issue.title : issue.issueTypeDisplay,
           style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 15,
             fontFamily: 'Poppins',
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          issue['location'],
+          issue.location,
           style: const TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: TextButton(
           onPressed: () => _showIssueDetails(context, issue),
           child: const Text(
-            "View Details",
+            "Details",
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
         ),
@@ -408,86 +553,107 @@ class _AdminDashboardTab extends StatelessWidget {
     );
   }
 
-  // --- UPDATED METHOD: Fixed Closing Animation ---
-  void _showIssueDetails(BuildContext context, Map<String, dynamic> issue) {
+  void _showIssueDetails(BuildContext context, SupervisorIssue issue) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: "Details",
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 250), // Slightly faster
+      transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (ctx, anim1, anim2) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
-            issue['title'],
+            issue.title.isNotEmpty ? issue.title : issue.issueTypeDisplay,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontFamily: 'Poppins',
             ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _detailRow(
-                Icons.confirmation_number_outlined,
-                "ID: ${issue['id']}",
-              ),
-              const SizedBox(height: 8),
-              _detailRow(Icons.location_on_outlined, issue['location']),
-              const SizedBox(height: 16),
-              const Text(
-                "Description:",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  fontFamily: 'Poppins',
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _detailRow(Icons.location_on_outlined, issue.location),
+                const SizedBox(height: 8),
+                _detailRow(
+                  Icons.category_outlined,
+                  "Type: ${issue.issueTypeDisplay}",
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                issue['desc'],
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: 13,
-                  fontFamily: 'Poppins',
+                const SizedBox(height: 8),
+                _detailRow(
+                  Icons.flag_outlined,
+                  "Status: ${issue.statusDisplay}",
                 ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Current Team:",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  fontFamily: 'Poppins',
+                const SizedBox(height: 16),
+                const Text(
+                  "Description:",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    fontFamily: 'Poppins',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: (issue['team'] as List<String>)
-                    .map(
-                      (name) => Chip(
-                        avatar: CircleAvatar(
-                          child: Text(
-                            name[0],
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                        ),
-                        label: Text(name, style: const TextStyle(fontSize: 11)),
-                        backgroundColor: Colors.grey[100],
+                const SizedBox(height: 4),
+                Text(
+                  issue.description.isNotEmpty
+                      ? issue.description
+                      : "No description provided",
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontSize: 13,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                if (issue.isAssigned) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Assigned To:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Chip(
+                    avatar: CircleAvatar(
+                      child: Text(
+                        issue.assignedWorkerName?[0] ?? 'W',
+                        style: const TextStyle(fontSize: 10),
                       ),
-                    )
-                    .toList(),
-              ),
-            ],
+                    ),
+                    label: Text(
+                      issue.assignedWorkerName ?? 'Unknown',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    backgroundColor: Colors.grey[100],
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AssignIssuePage(
+                      issueId: issue.id,
+                      issueTitle: issue.title.isNotEmpty
+                          ? issue.title
+                          : issue.issueTypeDisplay,
+                    ),
+                  ),
+                ).then((_) => _refreshData());
+              },
+              child: Text(issue.isAssigned ? "Reassign" : "Assign"),
+            ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text("Close"),
@@ -496,9 +662,6 @@ class _AdminDashboardTab extends StatelessWidget {
         );
       },
       transitionBuilder: (ctx, anim1, anim2, child) {
-        // --- FIXED ANIMATION LOGIC ---
-        // curve: easeOutBack (Bounce In)
-        // reverseCurve: easeIn (Smooth Shrink Out - No bouncing)
         return ScaleTransition(
           scale: CurvedAnimation(
             parent: anim1,
@@ -732,30 +895,27 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Text(
-                '#${issue.id}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[500],
-                  fontFamily: 'Poppins',
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _getStatusText(issue.status),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                    fontFamily: 'Poppins',
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _getStatusText(issue.status),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                      fontFamily: 'Poppins',
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
@@ -763,7 +923,7 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
           ),
           const SizedBox(height: 8),
           Text(
-            issue.title ?? issue.type ?? 'Untitled Issue',
+            issue.title.isNotEmpty ? issue.title : issue.type,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -782,7 +942,9 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  issue.location ?? 'Unknown location',
+                  issue.location.isNotEmpty
+                      ? issue.location
+                      : 'Unknown location',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],
@@ -825,8 +987,10 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => AssignIssuePage(
-                            issueId: issue.id ?? '',
-                            issueTitle: issue.title ?? issue.type ?? 'Issue',
+                            issueId: issue.id,
+                            issueTitle: issue.title.isNotEmpty
+                                ? issue.title
+                                : issue.type,
                           ),
                         ),
                       ).then((_) => _loadIssues()); // Refresh on return
@@ -852,8 +1016,10 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => AssignIssuePage(
-                            issueId: issue.id ?? '',
-                            issueTitle: issue.title ?? issue.type ?? 'Issue',
+                            issueId: issue.id,
+                            issueTitle: issue.title.isNotEmpty
+                                ? issue.title
+                                : issue.type,
                           ),
                         ),
                       ).then((_) => _loadIssues()); // Refresh on return

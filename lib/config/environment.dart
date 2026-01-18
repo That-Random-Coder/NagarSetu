@@ -30,6 +30,7 @@ class Environment {
       '$supervisorEndpoint/registration';
   static const String supervisorGetCodeEndpoint = '$supervisorEndpoint/getCode';
   static const String supervisorFilterEndpoint = '$supervisorEndpoint/filter';
+  static const String supervisorWorkersEndpoint = '$supervisorEndpoint/workers';
 
   // Admin endpoints
   static const String adminEndpoint = '$apiVersion/admin';

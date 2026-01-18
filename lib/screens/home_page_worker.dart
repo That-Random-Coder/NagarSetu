@@ -817,9 +817,11 @@ class _IssuesTabState extends State<_IssuesTab> {
                       final issue = _filteredIssues[index];
                       return _buildTaskCard(
                         issue: issue,
-                        title: issue.issueType,
-                        address: 'Unknown location',
-                        date: _formatDueDate(null),
+                        title: issue.title?.isNotEmpty == true
+                            ? issue.title!
+                            : issue.issueTypeDisplay,
+                        address: issue.location ?? 'Location not available',
+                        date: _formatDueDate(issue.createdAt),
                         status: _getStatusDisplay(issue.stages),
                         statusColor: _getStatusColor(issue.stages),
                       );
