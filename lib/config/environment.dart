@@ -6,7 +6,7 @@ class Environment {
   /// Base URL for the API server
   /// Change this for different environments (dev, staging, production)
   static const String apiBaseUrl =
-      'https://towers-cams-spell-zus.trycloudflare.com';
+      'https://structural-blend-custom-ebooks.trycloudflare.com';
 
   /// API endpoints
   static const String apiVersion = '/api';
@@ -68,6 +68,10 @@ class Environment {
       '$issueEndpoint/map/supervisor';
   static const String getIssueMapAdminEndpoint = '$issueEndpoint/map/admin';
   static const String getIssueByIdEndpoint = issueEndpoint;
+  static const String getIssueWorkerEndpoint =
+      '$issueEndpoint/{issueId}/worker';
+  static const String reassignIssueEndpoint =
+      '$issueEndpoint/{issueId}/reassign/{workerId}';
 
   /// Google Gemini AI API Key (Free tier: 15 RPM, 1500 RPD)
   /// Get your free API key from: https://aistudio.google.com/app/apikey

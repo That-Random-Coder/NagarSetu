@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/supervisor_service.dart';
-import '../services/secure_storage_service.dart';
 import '../models/supervisor_models.dart';
 
 class AssignIssuePage extends StatefulWidget {
@@ -195,25 +194,9 @@ class _AssignIssuePageState extends State<AssignIssuePage> {
     setState(() => _isAssigning = true);
 
     try {
-      // Get current supervisor ID
-      final supervisorId = await SecureStorageService.getUserId();
-
-      if (supervisorId == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Session expired. Please login again."),
-              backgroundColor: Colors.red,
-            ),
-          );
-          setState(() => _isAssigning = false);
-        }
-        return;
-      }
-
-      final result = await SupervisorService.reassignWorker(
+      final result = await SupervisorService.reassignIssue(
+        issueId: widget.issueId,
         workerId: worker.id!,
-        supervisorId: supervisorId,
       );
 
       if (mounted) {

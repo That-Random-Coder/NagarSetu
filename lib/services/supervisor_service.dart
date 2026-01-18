@@ -583,17 +583,74 @@ class SupervisorService {
     }
   }
 
-  /// Reassign worker to an issue
-  static Future<SupervisorApiResult<bool>> reassignWorker({
+  /// Get worker info for an issue
+  /// API: GET /api/issue/{issueId}/worker
+  static Future<SupervisorApiResult<Map<String, String?>>> getIssueWorker(
+    String issueId,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '${Environment.apiBaseUrl}${Environment.issueEndpoint}/$issueId/worker',
+      );
+
+      _log('GET ISSUE WORKER REQUEST: $uri');
+
+      final headers = await _authHeaders;
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: Environment.requestTimeout));
+
+      _log(
+        'GET ISSUE WORKER RESPONSE: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return SupervisorApiResult(
+          success: true,
+          data: {
+            'workerId': data['workerId']?.toString(),
+            'workerName': data['workerName']?.toString(),
+          },
+        );
+      } else {
+        // No worker assigned or error - return empty
+        return SupervisorApiResult(
+          success: true,
+          data: {'workerId': null, 'workerName': null},
+        );
+      }
+    } on SocketException {
+      return SupervisorApiResult(
+        success: false,
+        message: 'No internet connection.',
+      );
+    } on HandshakeException {
+      return SupervisorApiResult(
+        success: false,
+        message: 'Connection security error.',
+      );
+    } catch (e) {
+      _log('GET ISSUE WORKER ERROR: $e');
+      return SupervisorApiResult(
+        success: true,
+        data: {'workerId': null, 'workerName': null},
+      );
+    }
+  }
+
+  /// Reassign issue to a worker
+  /// PUT /api/issue/{issueId}/reassign/{workerId}
+  static Future<SupervisorApiResult<bool>> reassignIssue({
+    required String issueId,
     required String workerId,
-    required String supervisorId,
   }) async {
     try {
       final uri = Uri.parse(
-        '${Environment.apiBaseUrl}${Environment.adminEndpoint}/reassignWorker/$workerId/$supervisorId',
+        '${Environment.apiBaseUrl}${Environment.issueEndpoint}/$issueId/reassign/$workerId',
       );
 
-      _log('REASSIGN WORKER REQUEST: $uri');
+      _log('REASSIGN ISSUE REQUEST: $uri');
 
       final headers = await _authHeaders;
       final response = await _client
@@ -601,20 +658,20 @@ class SupervisorService {
           .timeout(Duration(seconds: Environment.requestTimeout));
 
       _log(
-        'REASSIGN WORKER RESPONSE: ${response.statusCode} - ${response.body}',
+        'REASSIGN ISSUE RESPONSE: ${response.statusCode} - ${response.body}',
       );
 
       if (response.statusCode == 200) {
         return SupervisorApiResult(
           success: true,
           data: true,
-          message: 'Worker reassigned successfully.',
+          message: 'Issue reassigned successfully.',
         );
       } else {
         final errorMsg = _parseErrorMessage(response.body);
         return SupervisorApiResult(
           success: false,
-          message: errorMsg ?? 'Failed to reassign worker.',
+          message: errorMsg ?? 'Failed to reassign issue.',
         );
       }
     } on SocketException {
@@ -628,7 +685,7 @@ class SupervisorService {
         message: 'Connection security error. Please try again.',
       );
     } catch (e) {
-      _log('REASSIGN WORKER ERROR: $e');
+      _log('REASSIGN ISSUE ERROR: $e');
       return SupervisorApiResult(
         success: false,
         message: 'An error occurred. Please try again.',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'supervisor_issue.dart';
 import 'supervisor_map_screen.dart';
+import 'supervisor_issue_detail_screen.dart';
 import 'notifications.dart';
 import '../services/supervisor_service.dart';
 import '../services/secure_storage_service.dart';
@@ -929,124 +930,12 @@ class _AdminDashboardTabState extends State<_AdminDashboardTab> {
   }
 
   void _showIssueDetails(BuildContext context, SupervisorIssue issue) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: "Details",
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (ctx, anim1, anim2) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            issue.title.isNotEmpty ? issue.title : issue.issueTypeDisplay,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _detailRow(Icons.location_on_outlined, issue.location),
-                const SizedBox(height: 8),
-                _detailRow(
-                  Icons.category_outlined,
-                  "Type: ${issue.issueTypeDisplay}",
-                ),
-                const SizedBox(height: 8),
-                _detailRow(
-                  Icons.flag_outlined,
-                  "Status: ${issue.statusDisplay}",
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Description:",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  issue.description.isNotEmpty
-                      ? issue.description
-                      : "No description provided",
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 13,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                if (issue.isAssigned) ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Assigned To:",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Chip(
-                    avatar: CircleAvatar(
-                      child: Text(
-                        issue.assignedWorkerName?[0] ?? 'W',
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    ),
-                    label: Text(
-                      issue.assignedWorkerName ?? 'Unknown',
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                    backgroundColor: Colors.grey[100],
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AssignIssuePage(
-                      issueId: issue.id,
-                      issueTitle: issue.title.isNotEmpty
-                          ? issue.title
-                          : issue.issueTypeDisplay,
-                    ),
-                  ),
-                ).then((_) => _refreshData());
-              },
-              child: Text(issue.isAssigned ? "Reassign" : "Assign"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Close"),
-            ),
-          ],
-        );
-      },
-      transitionBuilder: (ctx, anim1, anim2, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(
-            parent: anim1,
-            curve: Curves.easeOutBack,
-            reverseCurve: Curves.easeIn,
-          ),
-          child: FadeTransition(opacity: anim1, child: child),
-        );
-      },
-    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SupervisorIssueDetailScreen(issueId: issue.id),
+      ),
+    ).then((_) => _refreshData());
   }
 
   Widget _detailRow(IconData icon, String text) {
@@ -1248,168 +1137,183 @@ class _AdminIssuesTabState extends State<_AdminIssuesTab> {
         issue.assignedWorkerName != null &&
         issue.assignedWorkerName!.isNotEmpty;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                SupervisorIssueDetailScreen(issueId: issue.id),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+        ).then((_) => _loadIssues());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _getStatusText(issue.status),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                        fontFamily: 'Poppins',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              issue.title.isNotEmpty ? issue.title : issue.type,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: Colors.grey[600],
+                ),
+                const SizedBox(width: 4),
+                Expanded(
                   child: Text(
-                    _getStatusText(issue.status),
+                    issue.location.isNotEmpty
+                        ? issue.location
+                        : 'Unknown location',
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
+                      fontSize: 13,
+                      color: Colors.grey[600],
                       fontFamily: 'Poppins',
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            issue.title.isNotEmpty ? issue.title : issue.type,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(
-                Icons.location_on_outlined,
-                size: 14,
-                color: Colors.grey[600],
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  issue.location.isNotEmpty
-                      ? issue.location
-                      : 'Unknown location',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                    fontFamily: 'Poppins',
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          if (hasAssignee) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.person_outline, size: 14, color: Colors.blue),
-                const SizedBox(width: 4),
-                Text(
-                  "Assigned to: ${issue.assignedWorkerName}",
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
               ],
             ),
-          ],
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: hasAssignee
-                ? OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AssignIssuePage(
-                            issueId: issue.id,
-                            issueTitle: issue.title.isNotEmpty
-                                ? issue.title
-                                : issue.type,
-                          ),
-                        ),
-                      ).then((_) => _loadIssues());
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF1976D2)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      "Reassign",
-                      style: TextStyle(
-                        color: Color(0xFF1976D2),
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                  )
-                : ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AssignIssuePage(
-                            issueId: issue.id,
-                            issueTitle: issue.title.isNotEmpty
-                                ? issue.title
-                                : issue.type,
-                          ),
-                        ),
-                      ).then((_) => _loadIssues());
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1976D2),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      "Assign Worker",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Poppins',
-                      ),
+            if (hasAssignee) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.person_outline,
+                    size: 14,
+                    color: Colors.blue,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    "Assigned to: ${issue.assignedWorkerName}",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'Poppins',
                     ),
                   ),
-          ),
-        ],
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: hasAssignee
+                  ? OutlinedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AssignIssuePage(
+                              issueId: issue.id,
+                              issueTitle: issue.title.isNotEmpty
+                                  ? issue.title
+                                  : issue.type,
+                            ),
+                          ),
+                        ).then((_) => _loadIssues());
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF1976D2)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        "Reassign",
+                        style: TextStyle(
+                          color: Color(0xFF1976D2),
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AssignIssuePage(
+                              issueId: issue.id,
+                              issueTitle: issue.title.isNotEmpty
+                                  ? issue.title
+                                  : issue.type,
+                            ),
+                          ),
+                        ).then((_) => _loadIssues());
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1976D2),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        "Assign Worker",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
